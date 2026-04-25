@@ -598,7 +598,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
     actions = [
         "Analyze Security Configuration",
         "Run AI Security Analysis",
-        "Simulate Autonomous Decisions",
+        "🤖 Autonomous Agent (Full Automation)",
         "Full Analysis + Simulation",
         "Clone and Scan Code",
         "Export Repository Info",
@@ -623,7 +623,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
                 _action_analyze_security(repo)
             elif action == "Run AI Security Analysis":
                 _action_ai_analysis(repo)
-            elif action == "Simulate Autonomous Decisions":
+            elif action == "🤖 Autonomous Agent (Full Automation)":
                 _action_simulate_decisions(repo)
             elif action == "Full Analysis + Simulation":
                 _action_full_analysis(repo)
@@ -719,12 +719,11 @@ def _action_ai_analysis(repo: Dict[str, Any]) -> None:
 
 
 def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
-    """Simulate autonomous decisions"""
+    """Run fully autonomous agent with complete automation"""
     from sentinelci.config import get_config
     from sentinelci.ai_analyzer import AISecurityAnalyzer
-    from sentinelci.autonomous_engine import AutonomousEngine
     from sentinelci.github_security import GitHubSecurityAnalyzer
-    from sentinelci.output.ai_dashboard import render_autonomous_decisions
+    from sentinelci.core.autonomous_agent import AutonomousSecurityAgent
     import asyncio
 
     try:
@@ -735,9 +734,12 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
             click.echo("❌ AI API key not configured. Run: sci --config")
             return
 
-        click.echo(f"\n🎬 Simulating autonomous decisions...")
+        click.echo(f"\n🤖 Autonomous Security Agent")
+        click.echo(f"Repository: {repo['full_name']}\n")
         
-        # Gather repository data
+        # Phase 1: Security Analysis
+        click.echo("Phase 1: Security Analysis")
+        
         github_analyzer = GitHubSecurityAnalyzer()
         analysis = github_analyzer.analyze_repository(repo['full_name'])
         
@@ -747,43 +749,75 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
             "language": repo.get('language', ''),
         }
         
-        workflows = analysis.get('workflows', [])
-        dependencies = []
-        pipeline_data = {
-            "ci_cd_files": analysis.get('ci_cd_files', {}),
-            "failed_workflows": analysis.get('failed_workflows', []),
-        }
-
-        # Run AI analysis
         ai_analyzer = AISecurityAnalyzer(api_key)
         ai_result = asyncio.run(
             ai_analyzer.analyze_repository(
                 repo['full_name'],
                 metadata,
-                workflows,
-                dependencies,
-                pipeline_data,
+                analysis.get('workflows', []),
+                [],
+                {"ci_cd_files": analysis.get('ci_cd_files', {})},
             )
         )
-
-        # Simulate decisions
-        engine = AutonomousEngine()
-        simulation = engine.simulate(
-            repo['full_name'],
-            [f.to_dict() for f in ai_result.findings],
-        )
-
-        # Render results
-        render_autonomous_decisions(simulation.to_dict())
-
-        # Save to file
-        output_file = f"{repo['name']}_decisions.json"
-        engine.export_decisions(simulation, output_file)
         
-        click.echo(f"\n💾 Decisions saved to: {output_file}")
+        findings = [f.to_dict() for f in ai_result.findings]
+        
+        if not findings:
+            click.echo("✅ No security issues found")
+            return
+        
+        click.echo(f"Found {len(findings)} issue(s)\n")
+        
+        # Phase 2: Create autonomous plan
+        click.echo("Phase 2: Planning Autonomous Actions")
+        
+        agent = AutonomousSecurityAgent()
+        plan = asyncio.run(agent.analyze_and_plan(repo['full_name'], findings))
+        
+        # Phase 3: Display plan
+        agent.display_plan(plan)
+        
+        # Phase 4: Ask for confirmation
+        click.echo("⚠️  The agent will autonomously:")
+        click.echo("  • Edit files to fix vulnerabilities")
+        click.echo("  • Create commits with changes")
+        click.echo("  • Push to new branch")
+        click.echo("  • Open pull request")
+        click.echo("  • Create tracking issues\n")
+        
+        if not click.confirm("Allow autonomous execution?", default=False):
+            click.echo("\n❌ Autonomous execution cancelled")
+            
+            # Save plan for review
+            import json
+            plan_file = f"{repo['name']}_autonomous_plan.json"
+            with open(plan_file, 'w') as f:
+                json.dump(plan.to_dict(), f, indent=2)
+            click.echo(f"💾 Plan saved to {plan_file}")
+            return
+        
+        # Phase 5: Execute autonomously
+        click.echo()
+        results = asyncio.run(agent.execute_plan(plan, auto_approve=False))
+        
+        # Phase 6: Display results
+        agent.display_results(results)
+        
+        # Save execution log
+        import json
+        log_file = f"{repo['name']}_execution_log.json"
+        with open(log_file, 'w') as f:
+            json.dump({
+                "plan": plan.to_dict(),
+                "results": results,
+            }, f, indent=2)
+        
+        click.echo(f"💾 Execution log saved to {log_file}")
 
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
+        import traceback
+        traceback.print_exc()
 
 
 def _action_full_analysis(repo: Dict[str, Any]) -> None:
@@ -865,6 +899,7 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
     import tempfile
     import shutil
     from pathlib import Path
+    import os
 
     try:
         click.echo(f"\n📥 Cloning repository...")
@@ -873,9 +908,12 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         temp_dir = tempfile.mkdtemp()
         repo_path = Path(temp_dir) / repo['name']
         
-        # Clone repository
+        click.echo(f"Temp directory: {temp_dir}")
+        click.echo(f"Clone URL: {repo['clone_url']}")
+        
+        # Clone repository (full clone, not shallow)
         result = subprocess.run(
-            ["git", "clone", "--depth", "1", repo['clone_url'], str(repo_path)],
+            ["git", "clone", repo['clone_url'], str(repo_path)],
             capture_output=True,
             text=True,
             timeout=300,
@@ -883,9 +921,46 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         
         if result.returncode != 0:
             click.echo(f"❌ Clone failed: {result.stderr}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
             return
         
         click.echo(f"✅ Cloned to: {repo_path}")
+        
+        # Verify clone worked - check if files exist
+        if not repo_path.exists():
+            click.echo(f"❌ Repository path doesn't exist: {repo_path}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
+        
+        # List files to verify
+        files = list(repo_path.iterdir())
+        click.echo(f"📁 Found {len(files)} items in repository:")
+        for f in files[:10]:  # Show first 10 items
+            click.echo(f"  - {f.name}")
+        if len(files) > 10:
+            click.echo(f"  ... and {len(files) - 10} more")
+        
+        # Check if it's just .git
+        if len(files) == 1 and files[0].name == '.git':
+            click.echo("⚠️  Only .git directory found - attempting full checkout...")
+            
+            # Try to checkout files
+            checkout_result = subprocess.run(
+                ["git", "checkout", "-f", "HEAD"],
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+            )
+            
+            if checkout_result.returncode != 0:
+                click.echo(f"❌ Checkout failed: {checkout_result.stderr}")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return
+            
+            # Re-check files
+            files = list(repo_path.iterdir())
+            click.echo(f"📁 After checkout: {len(files)} items")
+        
         click.echo(f"\n🔍 Scanning code...")
         
         # Run scan
@@ -903,6 +978,7 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         )
         
         # Cleanup
+        click.echo(f"\n🧹 Cleaning up temporary directory...")
         shutil.rmtree(temp_dir, ignore_errors=True)
         
         if exit_code == 0:
@@ -910,8 +986,16 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         else:
             click.echo(f"\n⚠️  Scan completed with exit code: {exit_code}")
 
+    except subprocess.TimeoutExpired:
+        click.echo(f"❌ Clone timed out after 300 seconds")
+        if 'temp_dir' in locals():
+            shutil.rmtree(temp_dir, ignore_errors=True)
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
+        import traceback
+        traceback.print_exc()
+        if 'temp_dir' in locals():
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def _action_export_info(repo: Dict[str, Any]) -> None:
