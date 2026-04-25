@@ -930,9 +930,15 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         click.echo(f"Temp directory: {temp_dir}")
         click.echo(f"Clone URL: {repo['clone_url']}")
         
-        # Clone repository (full clone, not shallow)
+        # Clone repository with explicit config to ensure working tree
         result = subprocess.run(
-            ["git", "clone", repo['clone_url'], str(repo_path)],
+            [
+                "git", "clone",
+                "--config", "core.bare=false",
+                "--config", "core.worktree=.",
+                repo['clone_url'],
+                str(repo_path)
+            ],
             capture_output=True,
             text=True,
             timeout=300,
@@ -940,6 +946,13 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
         
         if result.returncode != 0:
             click.echo(f"❌ Clone failed: {result.stderr}")
+            
+            # Check if repository is empty
+            if "does not have any commits yet" in result.stderr or "empty repository" in result.stderr.lower():
+                click.echo("⚠️  Repository appears to be empty (no commits)")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return
+            
             shutil.rmtree(temp_dir, ignore_errors=True)
             return
         
@@ -951,34 +964,72 @@ def _action_clone_and_scan(repo: Dict[str, Any]) -> None:
             shutil.rmtree(temp_dir, ignore_errors=True)
             return
         
-        # List files to verify
-        files = list(repo_path.iterdir())
-        click.echo(f"📁 Found {len(files)} items in repository:")
-        for f in files[:10]:  # Show first 10 items
-            click.echo(f"  - {f.name}")
-        if len(files) > 10:
-            click.echo(f"  ... and {len(files) - 10} more")
+        # Check if .git exists
+        git_dir = repo_path / ".git"
+        if not git_dir.exists():
+            click.echo(f"❌ .git directory not found - clone may have failed")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return
         
-        # Check if it's just .git
-        if len(files) == 1 and files[0].name == '.git':
-            click.echo("⚠️  Only .git directory found - attempting full checkout...")
+        # List files to verify
+        files = [f for f in repo_path.iterdir() if f.name != '.git']
+        all_items = list(repo_path.iterdir())
+        
+        click.echo(f"📁 Found {len(all_items)} items in repository:")
+        for f in all_items[:10]:  # Show first 10 items
+            click.echo(f"  - {f.name}")
+        if len(all_items) > 10:
+            click.echo(f"  ... and {len(all_items) - 10} more")
+        
+        # Check if repository is empty (only .git)
+        if len(files) == 0:
+            click.echo("\n⚠️  Repository appears to be empty (no files besides .git)")
             
-            # Try to checkout files
-            checkout_result = subprocess.run(
-                ["git", "checkout", "-f", "HEAD"],
+            # Check if there are any commits
+            check_commits = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
                 cwd=str(repo_path),
                 capture_output=True,
                 text=True,
             )
             
-            if checkout_result.returncode != 0:
-                click.echo(f"❌ Checkout failed: {checkout_result.stderr}")
+            if check_commits.returncode != 0:
+                click.echo("⚠️  No commits found in repository - nothing to scan")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return
+            
+            # Try to list branches
+            list_branches = subprocess.run(
+                ["git", "branch", "-a"],
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+            )
+            
+            click.echo(f"Branches: {list_branches.stdout}")
+            
+            # Try to reset to HEAD
+            click.echo("Attempting to restore working tree...")
+            reset_result = subprocess.run(
+                ["git", "reset", "--hard", "HEAD"],
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+            )
+            
+            if reset_result.returncode != 0:
+                click.echo(f"❌ Reset failed: {reset_result.stderr}")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 return
             
             # Re-check files
-            files = list(repo_path.iterdir())
-            click.echo(f"📁 After checkout: {len(files)} items")
+            files = [f for f in repo_path.iterdir() if f.name != '.git']
+            click.echo(f"📁 After reset: {len(files)} files (excluding .git)")
+            
+            if len(files) == 0:
+                click.echo("❌ Still no files - repository may be truly empty")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return
         
         click.echo(f"\n🔍 Scanning code...")
         
