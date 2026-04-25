@@ -218,3 +218,41 @@ class GitHubAuth:
             except GitHubAuthError:
                 print("⚠️  Stored PAT is invalid or expired")
                 self.prompt_and_store_pat()
+
+    def get_token_scopes(self) -> list[str]:
+        """
+        Get the scopes/permissions of the current PAT
+        
+        Returns:
+            List of scope strings
+            
+        Raises:
+            GitHubAuthError: If not authenticated
+        """
+        pat = self.get_pat()
+        if not pat:
+            raise GitHubAuthError("No GitHub PAT configured")
+
+        headers = {
+            "Authorization": f"token {pat}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        try:
+            response = requests.get(
+                f"{self.base_url}/user",
+                headers=headers,
+                timeout=10,
+            )
+
+            if response.status_code == 200:
+                # GitHub returns scopes in the X-OAuth-Scopes header
+                scopes_header = response.headers.get("X-OAuth-Scopes", "")
+                if scopes_header:
+                    return [s.strip() for s in scopes_header.split(",")]
+                return []
+            else:
+                raise GitHubAuthError(f"Failed to get token scopes: {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            raise GitHubAuthError(f"Network error: {str(e)}")

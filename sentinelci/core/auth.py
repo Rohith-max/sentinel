@@ -83,3 +83,52 @@ class GitHubAuth:
             self.get_authenticated_user()
         except GitHubAuthError:
             raise GitHubAuthError("Stored PAT is invalid. Run: sci github setup")
+
+    def get_token_scopes(self) -> list[str]:
+        """Get the scopes/permissions of the current PAT"""
+        pat = self.get_pat()
+        if not pat:
+            raise GitHubAuthError("No GitHub PAT configured")
+
+        headers = {
+            "Authorization": f"token {pat}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+        try:
+            response = requests.get(
+                f"{self.base_url}/user",
+                headers=headers,
+                timeout=10,
+            )
+
+            if response.status_code == 200:
+                # GitHub returns scopes in the X-OAuth-Scopes header
+                scopes_header = response.headers.get("X-OAuth-Scopes", "")
+                if scopes_header:
+                    return [s.strip() for s in scopes_header.split(",")]
+                return []
+            else:
+                raise GitHubAuthError(f"Failed to get token scopes: {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            raise GitHubAuthError(f"Network error: {str(e)}")
+
+    def check_required_scopes(self, required_scopes: list[str]) -> tuple[bool, list[str]]:
+        """
+        Check if PAT has required scopes
+        
+        Returns:
+            (has_all_scopes, missing_scopes)
+        """
+        try:
+            current_scopes = self.get_token_scopes()
+            missing = []
+            
+            for required in required_scopes:
+                if required not in current_scopes:
+                    missing.append(required)
+            
+            return (len(missing) == 0, missing)
+        except GitHubAuthError:
+            return (False, required_scopes)

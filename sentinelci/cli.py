@@ -499,6 +499,25 @@ def auth() -> None:
             click.echo(f"   Email: {user.get('email', 'N/A')}")
             click.echo(f"   Profile: {user.get('html_url', '')}")
             
+            # Show token scopes
+            try:
+                scopes = auth.get_token_scopes()
+                if scopes:
+                    click.echo(f"\n🔑 Token Scopes:")
+                    for scope in scopes:
+                        click.echo(f"   • {scope}")
+                    
+                    # Check for required scopes
+                    required = ['repo']
+                    missing = [s for s in required if s not in scopes]
+                    if missing:
+                        click.echo(f"\n⚠️  Missing recommended scopes: {', '.join(missing)}")
+                        click.echo("   Some features (like creating issues/PRs) may not work")
+                else:
+                    click.echo(f"\n⚠️  No scopes detected - token may have limited permissions")
+            except Exception as e:
+                click.echo(f"\n⚠️  Could not check token scopes: {str(e)}")
+            
             if orgs:
                 click.echo(f"\n📋 Organizations ({len(orgs)}):")
                 for org in orgs[:10]:

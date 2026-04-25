@@ -434,6 +434,9 @@ class AutonomousSecurityAgent:
         if issues_to_create:
             console.print("\n[bold cyan]📋 Creating issues...[/bold cyan]")
             
+            issues_created = 0
+            issues_failed = 0
+            
             for action in issues_to_create:
                 try:
                     issue = self.remediation.create_security_issue(
@@ -442,8 +445,23 @@ class AutonomousSecurityAgent:
                         f"Automated security tracking\n\nTarget: {action.target}",
                     )
                     console.print(f"  [green]✓[/green] Issue #{issue['number']}")
+                    issues_created += 1
+                except GitHubAuthError as e:
+                    error_msg = str(e)
+                    if "403" in error_msg:
+                        console.print(f"  [red]✗[/red] Permission denied - GitHub PAT needs 'repo' or 'public_repo' scope")
+                        issues_failed += 1
+                    else:
+                        console.print(f"  [red]✗[/red] Failed: {error_msg}")
+                        issues_failed += 1
                 except Exception as e:
                     console.print(f"  [red]✗[/red] Failed: {str(e)}")
+                    issues_failed += 1
+            
+            if issues_failed > 0:
+                console.print(f"\n[yellow]⚠️  {issues_failed} issue(s) failed to create[/yellow]")
+                console.print("[dim]Tip: Check your GitHub PAT has 'repo' scope for private repos or 'public_repo' for public repos[/dim]")
+                results["actions_failed"] += issues_failed
         
         console.print()
         
