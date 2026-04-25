@@ -647,7 +647,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
     actions = [
         "Analyze Security Configuration",
         "Run AI Security Analysis",
-        "🤖 Autonomous Agent (Full Automation)",
+        "Autonomous Agent (Full Automation)",
         "Full Analysis + Simulation",
         "Clone and Scan Code",
         "Export Repository Info",
@@ -672,7 +672,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
                 _action_analyze_security(repo)
             elif action == "Run AI Security Analysis":
                 _action_ai_analysis(repo)
-            elif action == "🤖 Autonomous Agent (Full Automation)":
+            elif action == "Autonomous Agent (Full Automation)":
                 _action_simulate_decisions(repo)
             elif action == "Full Analysis + Simulation":
                 _action_full_analysis(repo)
@@ -780,10 +780,10 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
         api_key = config.get_api_key()
         
         if not api_key:
-            click.echo("❌ AI API key not configured. Run: sci --config")
+            click.echo("ERROR: AI API key not configured. Run: sci --config")
             return
 
-        click.echo(f"\n🤖 Autonomous Security Agent")
+        click.echo(f"\nAutonomous Security Agent")
         click.echo(f"Repository: {repo['full_name']}\n")
         
         # Phase 1: Security Analysis
@@ -812,7 +812,7 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
         findings = [f.to_dict() for f in ai_result.findings]
         
         if not findings:
-            click.echo("✅ No security issues found")
+            click.echo("SUCCESS: No security issues found")
             return
         
         click.echo(f"Found {len(findings)} issue(s)\n")
@@ -827,22 +827,22 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
         agent.display_plan(plan)
         
         # Phase 4: Ask for confirmation
-        click.echo("⚠️  The agent will autonomously:")
-        click.echo("  • Edit files to fix vulnerabilities")
-        click.echo("  • Create commits with changes")
-        click.echo("  • Push to new branch")
-        click.echo("  • Open pull request")
-        click.echo("  • Create tracking issues\n")
+        click.echo("WARNING: The agent will autonomously:")
+        click.echo("  - Edit files to fix vulnerabilities")
+        click.echo("  - Create commits with changes")
+        click.echo("  - Push to new branch")
+        click.echo("  - Open pull request")
+        click.echo("  - Create tracking issues\n")
         
         if not click.confirm("Allow autonomous execution?", default=False):
-            click.echo("\n❌ Autonomous execution cancelled")
+            click.echo("\nExecution cancelled")
             
             # Save plan for review
             import json
             plan_file = f"{repo['name']}_autonomous_plan.json"
             with open(plan_file, 'w') as f:
                 json.dump(plan.to_dict(), f, indent=2)
-            click.echo(f"💾 Plan saved to {plan_file}")
+            click.echo(f"Plan saved to {plan_file}")
             return
         
         # Phase 5: Execute autonomously
@@ -861,10 +861,10 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
                 "results": results,
             }, f, indent=2)
         
-        click.echo(f"💾 Execution log saved to {log_file}")
+        click.echo(f"Execution log saved to {log_file}")
 
     except Exception as e:
-        click.echo(f"❌ Error: {str(e)}", err=True)
+        click.echo(f"ERROR: {str(e)}", err=True)
         import traceback
         traceback.print_exc()
 

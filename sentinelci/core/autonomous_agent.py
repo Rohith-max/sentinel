@@ -14,6 +14,10 @@ import asyncio
 
 from sentinelci.core.remediation import RemediationEngine
 from sentinelci.core.auth import GitHubAuthError
+from sentinelci.output.clean import (
+    print_header, print_success, print_error, print_warning,
+    print_info, print_step, print_table, print_panel, confirm
+)
 
 
 console = Console()
@@ -86,7 +90,7 @@ class AutonomousSecurityAgent:
         
         Returns complete plan with all actions
         """
-        console.print("\n[bold cyan]🤖 Autonomous Agent Analyzing...[/bold cyan]\n")
+        print_header("Autonomous Agent Analyzing", f"Repository: {repo_full_name}")
         
         actions = []
         critical_count = 0
@@ -213,7 +217,7 @@ class AutonomousSecurityAgent:
             f"[bold]Repository:[/bold] {plan.repository}\n"
             f"[bold]Risk:[/bold] {plan.risk_assessment}\n"
             f"[bold]Impact:[/bold] {plan.estimated_impact}",
-            title="🤖 Autonomous Agent Plan",
+            title="Autonomous Agent Plan",
             border_style="cyan",
             box=box.DOUBLE,
         ))
@@ -242,18 +246,12 @@ class AutonomousSecurityAgent:
                 "LOW": "dim",
             }.get(action.severity, "white")
             
-            # Icon based on action type
-            icon = {
-                "edit_file": "📝",
-                "create_pr": "🔀",
-                "open_issue": "📋",
-                "block_pipeline": "🚫",
-                "log_warning": "⚠️",
-            }.get(action.action_type, "•")
+            # Action type display
+            action_display = action.action_type.replace('_', ' ').title()
             
             table.add_row(
                 str(idx),
-                f"{icon} {action.action_type.replace('_', ' ').title()}",
+                action_display,
                 action.target,
                 action.description,
                 f"[{color}]{action.severity}[/{color}]",
@@ -272,18 +270,18 @@ class AutonomousSecurityAgent:
                 operation = action.changes.get("operation", "unknown")
                 
                 if operation == "remove_secret":
-                    console.print("   [dim]→ Remove hardcoded secret[/dim]")
-                    console.print("   [dim]→ Add comment: Use environment variable[/dim]")
+                    console.print("   [dim]-> Remove hardcoded secret[/dim]")
+                    console.print("   [dim]-> Add comment: Use environment variable[/dim]")
                 
                 elif operation == "add_permissions":
-                    console.print("   [dim]→ Add permissions block:[/dim]")
+                    console.print("   [dim]-> Add permissions block:[/dim]")
                     perms = action.changes.get("permissions", {})
                     for key, value in perms.items():
                         console.print(f"   [dim]   {key}: {value}[/dim]")
                 
                 elif operation == "pin_dependency":
                     package = action.changes.get("package", "unknown")
-                    console.print(f"   [dim]→ Pin {package} to specific version[/dim]")
+                    console.print(f"   [dim]-> Pin {package} to specific version[/dim]")
                 
                 console.print()
     
@@ -305,19 +303,17 @@ class AutonomousSecurityAgent:
         # Ask for confirmation if needed
         if plan.requires_approval and not auto_approve:
             console.print()
-            console.print("[bold yellow]⚠️  This plan requires your approval[/bold yellow]")
+            console.print("[bold yellow]WARNING: This plan requires your approval[/bold yellow]")
             console.print()
             
             if not Confirm.ask("Execute this plan?", default=False):
-                console.print("[yellow]❌ Execution cancelled by user[/yellow]")
+                console.print("[yellow]Execution cancelled by user[/yellow]")
                 return {
                     "status": "cancelled",
                     "reason": "User declined approval",
                 }
         
-        console.print()
-        console.print("[bold green]🚀 Executing Autonomous Plan...[/bold green]")
-        console.print()
+        print_header("Executing Autonomous Plan")
         
         results = {
             "status": "success",
@@ -332,7 +328,7 @@ class AutonomousSecurityAgent:
         issues_to_create = []
         
         for idx, action in enumerate(plan.actions, 1):
-            console.print(f"[cyan]Step {idx}/{len(plan.actions)}:[/cyan] {action.description}")
+            print_step(idx, len(plan.actions), action.description)
             
             try:
                 if action.action_type == "edit_file":
@@ -340,19 +336,19 @@ class AutonomousSecurityAgent:
                     if action.target not in files_to_edit:
                         files_to_edit[action.target] = []
                     files_to_edit[action.target].append(action)
-                    console.print(f"  [green]✓[/green] Planned edit for {action.target}")
+                    console.print(f"  [green]SUCCESS:[/green] Planned edit for {action.target}")
                 
                 elif action.action_type == "open_issue":
                     issues_to_create.append(action)
-                    console.print(f"  [green]✓[/green] Planned issue creation")
+                    console.print(f"  [green]SUCCESS:[/green] Planned issue creation")
                 
                 elif action.action_type == "log_warning":
-                    console.print(f"  [dim]⚠️  Logged warning[/dim]")
+                    console.print(f"  [dim]WARNING: Logged warning[/dim]")
                 
                 results["actions_executed"] += 1
                 
             except Exception as e:
-                console.print(f"  [red]✗[/red] Failed: {str(e)}")
+                console.print(f"  [red]FAILED:[/red] {str(e)}")
                 results["actions_failed"] += 1
             
             # Small delay for transparency
@@ -362,7 +358,7 @@ class AutonomousSecurityAgent:
         
         # Apply all file edits atomically
         if files_to_edit:
-            console.print("[bold cyan]📝 Applying file changes...[/bold cyan]")
+            console.print("[bold cyan]Applying file changes...[/bold cyan]")
             
             try:
                 # Get original content and apply changes
@@ -384,15 +380,15 @@ class AutonomousSecurityAgent:
                             )
                         
                         fixed_files[file_path] = modified_content
-                        console.print(f"  [green]✓[/green] Prepared {file_path}")
+                        console.print(f"  [green]SUCCESS:[/green] Prepared {file_path}")
                         
                     except Exception as e:
-                        console.print(f"  [red]✗[/red] Failed to prepare {file_path}: {str(e)}")
+                        console.print(f"  [red]FAILED:[/red] Failed to prepare {file_path}: {str(e)}")
                 
                 if fixed_files:
                     # Create branch and commit
                     branch_name = f"security/autonomous-fix-{len(fixed_files)}-files"
-                    commit_message = f"🤖 Autonomous Security Fix\n\nFixed {len(plan.actions)} issue(s) automatically"
+                    commit_message = f"Autonomous Security Fix\n\nFixed {len(plan.actions)} issue(s) automatically"
                     
                     console.print(f"\n[cyan]Creating branch: {branch_name}[/cyan]")
                     
@@ -403,12 +399,12 @@ class AutonomousSecurityAgent:
                         commit_message,
                     )
                     
-                    console.print(f"[green]✓[/green] Committed: {commit_sha[:7]}")
+                    console.print(f"[green]SUCCESS:[/green] Committed: {commit_sha[:7]}")
                     
                     # Create PR
                     console.print("\n[cyan]Creating pull request...[/cyan]")
                     
-                    pr_title = f"🤖 Autonomous Security Fix ({len(fixed_files)} files)"
+                    pr_title = f"Autonomous Security Fix ({len(fixed_files)} files)"
                     pr_body = self._generate_pr_body(plan, fixed_files)
                     
                     pr = self.remediation.create_pull_request(
@@ -424,15 +420,15 @@ class AutonomousSecurityAgent:
                         "branch": branch_name,
                     }
                     
-                    console.print(f"[green]✓[/green] PR #{pr['number']}: {pr['html_url']}")
+                    console.print(f"[green]SUCCESS:[/green] PR #{pr['number']}: {pr['html_url']}")
                 
             except Exception as e:
-                console.print(f"[red]✗[/red] Failed to apply changes: {str(e)}")
+                console.print(f"[red]FAILED:[/red] Failed to apply changes: {str(e)}")
                 results["actions_failed"] += len(files_to_edit)
         
         # Create issues
         if issues_to_create:
-            console.print("\n[bold cyan]📋 Creating issues...[/bold cyan]")
+            console.print("\n[bold cyan]Creating issues...[/bold cyan]")
             
             issues_created = 0
             issues_failed = 0
@@ -444,22 +440,22 @@ class AutonomousSecurityAgent:
                         action.changes.get("issue_title", "Security Issue"),
                         f"Automated security tracking\n\nTarget: {action.target}",
                     )
-                    console.print(f"  [green]✓[/green] Issue #{issue['number']}")
+                    console.print(f"  [green]SUCCESS:[/green] Issue #{issue['number']}")
                     issues_created += 1
                 except GitHubAuthError as e:
                     error_msg = str(e)
                     if "403" in error_msg:
-                        console.print(f"  [red]✗[/red] Permission denied - GitHub PAT needs 'repo' or 'public_repo' scope")
+                        console.print(f"  [red]FAILED:[/red] Permission denied - GitHub PAT needs 'repo' or 'public_repo' scope")
                         issues_failed += 1
                     else:
-                        console.print(f"  [red]✗[/red] Failed: {error_msg}")
+                        console.print(f"  [red]FAILED:[/red] {error_msg}")
                         issues_failed += 1
                 except Exception as e:
-                    console.print(f"  [red]✗[/red] Failed: {str(e)}")
+                    console.print(f"  [red]FAILED:[/red] {str(e)}")
                     issues_failed += 1
             
             if issues_failed > 0:
-                console.print(f"\n[yellow]⚠️  {issues_failed} issue(s) failed to create[/yellow]")
+                console.print(f"\n[yellow]WARNING: {issues_failed} issue(s) failed to create[/yellow]")
                 console.print("[dim]Tip: Check your GitHub PAT has 'repo' scope for private repos or 'public_repo' for public repos[/dim]")
                 results["actions_failed"] += issues_failed
         
@@ -515,7 +511,7 @@ class AutonomousSecurityAgent:
     
     def _generate_pr_body(self, plan: AgentPlan, files: Dict[str, str]) -> str:
         """Generate PR body"""
-        body = "## 🤖 Autonomous Security Agent\n\n"
+        body = "## Autonomous Security Agent\n\n"
         body += "This PR was created automatically by the autonomous security agent.\n\n"
         body += f"**Risk Assessment:** {plan.risk_assessment}\n"
         body += f"**Impact:** {plan.estimated_impact}\n\n"
@@ -543,7 +539,7 @@ class AutonomousSecurityAgent:
             f"[bold]Status:[/bold] {results['status'].upper()}\n"
             f"[bold]Actions Executed:[/bold] {results['actions_executed']}\n"
             f"[bold]Actions Failed:[/bold] {results['actions_failed']}",
-            title="🤖 Execution Results",
+            title="Execution Results",
             border_style="green" if results["status"] == "success" else "red",
             box=box.DOUBLE,
         ))
@@ -551,7 +547,7 @@ class AutonomousSecurityAgent:
         if results.get("pr_created"):
             pr = results["pr_created"]
             console.print()
-            console.print("[bold green]✅ Pull Request Created[/bold green]")
+            console.print("[bold green]Pull Request Created[/bold green]")
             console.print(f"  PR: #{pr['number']}")
             console.print(f"  URL: {pr['url']}")
             console.print(f"  Branch: {pr['branch']}")
