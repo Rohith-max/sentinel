@@ -32,7 +32,11 @@ console = Console()
 @app.command()
 def onboard():
     """Complete setup wizard for SentinelCI"""
-    console.print()
+    from sentinelci.output.terminal import render_banner
+    
+    # Show banner on first installation
+    render_banner()
+    
     console.print(Panel.fit(
         "[bold cyan]Welcome to SentinelCI![/bold cyan]\n\n"
         "AI-powered security scanning and automation platform\n"
@@ -764,9 +768,36 @@ def _action_full_analysis(repo: dict):
 # ============================================================================
 
 @app.command()
+def welcome():
+    """Show welcome banner and quick start guide"""
+    from sentinelci.output.terminal import render_banner
+    
+    render_banner()
+    console.print("[bold]Quick Start Guide:[/bold]")
+    console.print()
+    console.print("1. [cyan]sci onboard[/cyan] - Complete setup wizard")
+    console.print("2. [cyan]sci scan[/cyan] - Scan current directory")
+    console.print("3. [cyan]sci github repos[/cyan] - Analyze GitHub repositories")
+    console.print("4. [cyan]sci github auth[/cyan] - Check authentication")
+    console.print()
+    console.print("For detailed help: [cyan]sci --help[/cyan]")
+    console.print()
+
+
+@app.command()
 def version():
     """Show version information"""
+    from sentinelci.output.terminal import render_banner
+    
+    render_banner()
     console.print(f"SentinelCI version {__version__}")
+    console.print("AI-Powered Security Intelligence Platform")
+    console.print()
+    console.print("For help and documentation:")
+    console.print("  • Run: [cyan]sci onboard[/cyan] for setup")
+    console.print("  • Run: [cyan]sci --help[/cyan] for commands")
+    console.print("  • Visit: https://github.com/sentinelci/sentinelci")
+    console.print()
 
 
 if __name__ == "__main__":

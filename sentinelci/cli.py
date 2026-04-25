@@ -77,6 +77,44 @@ def main(
     no_backup: bool,
 ) -> None:
     """SCI - AI-powered security scanning for your code"""
+    
+    # Check for first-time installation
+    config = get_config()
+    is_first_run = not config.get_api_key() and not config.get_github_pat()
+    
+    # Show banner and onboarding on first run (unless running specific commands)
+    if is_first_run and ctx.invoked_subcommand is None and not any([
+        root_scan, root_watch, root_fix, root_config, root_report, root_version
+    ]):
+        from sentinelci.output.terminal import render_banner
+        render_banner()
+        
+        click.echo("Welcome to SentinelCI! It looks like this is your first time.")
+        click.echo("Let's get you set up with the interactive onboarding wizard.")
+        click.echo()
+        
+        if click.confirm("Run setup wizard now?", default=True):
+            # Import and run the modern onboarding
+            try:
+                import subprocess
+                import sys
+                result = subprocess.run([
+                    sys.executable, "-m", "sentinelci.cli_new", "onboard"
+                ], check=False)
+                if result.returncode == 0:
+                    click.echo("\nSetup complete! You can now use SentinelCI.")
+                    click.echo("Try: sci scan")
+                    return
+            except Exception:
+                pass
+            
+            # Fallback to basic setup
+            click.echo("Setting up basic configuration...")
+            click.echo("You can run 'sci github setup' later for GitHub integration.")
+        else:
+            click.echo("You can run setup later with: sci onboard")
+            click.echo("Or use the modern CLI: python -m sentinelci.cli_new onboard")
+    
     if ctx.invoked_subcommand is not None:
         return
 
