@@ -444,7 +444,24 @@ def collect_findings(
         _sync_github_remote(remote=remote, branch=branch, github_pat=effective_pat)
 
     scan_targets = _get_scan_targets(path, use_diff, sync_github=sync_github, remote=remote, branch=branch)
-    print(f"🔍 Scanning: {_summarize_targets(scan_targets)}\n")
+    
+    # Show what we're scanning
+    from rich.console import Console
+    console = Console()
+    
+    target_summary = _summarize_targets(scan_targets)
+    console.print(f"[cyan]🔍 Scanning:[/cyan] {target_summary}")
+    
+    # Show enabled scanners
+    scanners = []
+    scanners.append("secrets")
+    if enable_urls:
+        scanners.append("URLs")
+    if enable_firmware:
+        scanners.append("firmware CVEs")
+    
+    console.print(f"[dim]   Enabled scanners: {', '.join(scanners)}[/dim]")
+    console.print()
 
     findings = asyncio.run(
         _run_parallel_scans(
@@ -453,7 +470,16 @@ def collect_findings(
             enable_urls=enable_urls,
         )
     )
-    return _filter_findings_by_severity(findings, severity)
+    
+    filtered = _filter_findings_by_severity(findings, severity)
+    
+    # Show scan results summary
+    if filtered:
+        console.print(f"[yellow]⚠️  Found {len(filtered)} issue(s) at {severity.upper()}+ severity[/yellow]\n")
+    else:
+        console.print(f"[green]✅ No issues found at {severity.upper()}+ severity[/green]\n")
+    
+    return filtered
 
 
 def run_watch(

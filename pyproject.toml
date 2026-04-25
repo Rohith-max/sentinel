@@ -16,6 +16,7 @@ keywords = ["security", "cli", "scanner", "secrets", "cve", "ai"]
 
 dependencies = [
     "click==8.1.7",
+    "typer==0.9.0",
     "rich==13.7.0",
     "groq==0.31.0",
     "requests==2.31.0",

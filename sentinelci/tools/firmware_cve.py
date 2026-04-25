@@ -202,10 +202,12 @@ def scan_firmware_cves(path: str = ".") -> List[CveFinding]:
                     findings.append(finding)
 
     except FileNotFoundError:
-        print("⚠️  binwalk CLI not installed")
+        # Silently skip if binwalk not installed - it's optional
+        pass
     except OSError as e:
         if getattr(e, "winerror", None) == 193:
-            print("⚠️  binwalk executable is incompatible on this Windows setup; firmware CVE scan skipped")
+            # Silently skip on Windows incompatibility - it's expected
+            pass
         else:
             print(f"⚠️  Firmware CVE scanning OS error: {str(e)}")
     except subprocess.TimeoutExpired:

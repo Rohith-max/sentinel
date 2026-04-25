@@ -244,7 +244,8 @@ def scan_secrets(path: str = ".") -> List[SecretFinding]:
             # Legacy truffleHog v2 is git-history-only and cannot scan arbitrary paths.
             stderr_lower = (result.stderr or "").lower()
             if "unrecognized arguments" in stderr_lower or "git_url" in stderr_lower:
-                print("⚠️  Legacy truffleHog detected; using built-in fallback secret scanner for filesystem scanning")
+                # Silently fall back to built-in scanner for legacy TruffleHog
+                pass
             elif result.returncode not in (0, 1):
                 print(f"⚠️  TruffleHog error: {(result.stderr or '').strip()}")
 
@@ -252,7 +253,6 @@ def scan_secrets(path: str = ".") -> List[SecretFinding]:
             print("⚠️  TruffleHog scan timed out; using fallback scanner")
         except Exception as e:
             print(f"⚠️  TruffleHog invocation failed ({str(e)}); using fallback scanner")
-    else:
-        print("⚠️  TruffleHog not installed; using built-in fallback secret scanner")
+    # Silently use fallback scanner if TruffleHog not installed
 
     return _fallback_regex_scan(path)

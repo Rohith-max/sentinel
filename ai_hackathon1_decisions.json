@@ -1,0 +1,78 @@
+{
+  "repository": "Rohith-G611/ai_hackathon1",
+  "timestamp": "2026-04-25T19:18:40.497616",
+  "decisions": [
+    {
+      "action": "warn_only",
+      "reason": "Supply chain security should be improved",
+      "explanation": "\u26a0\ufe0f  WARNING: Supply chain security should be improved This MEDIUM severity issue should be reviewed but won't block execution. \ud83d\udccb Will open a security issue for tracking.",
+      "confidence": 0.8,
+      "severity": "MEDIUM",
+      "finding_id": "Lack of Dependency Verification",
+      "automated_fix": null,
+      "pr_title": null,
+      "pr_body": null,
+      "issue_title": "\ud83d\udd12 Security: Lack of Dependency Verification",
+      "issue_body": "## Security Finding\n\n**Category:** supply_chain\n**Severity:** MEDIUM\n**Confidence:** 80%\n**Location:** Repository dependencies\n\n## Description\n\nThe repository has no listed dependencies, which may indicate a lack of dependency verification. However, it's also possible that the repository simply doesn't have any dependencies.\n\n## Evidence\n\n```\nDependencies: []\n```\n\n## Remediation Steps\n\nImplement dependency verification tools, such as Snyk or Dependabot, to ensure dependencies are properly verified and updated.\n\n## Impact\n\nThis MEDIUM severity issue should be addressed to maintain security posture.\n\n---\n\n*This issue was automatically created by SentinelCI security analysis.*\n*Labels: security, automated*\n"
+    },
+    {
+      "action": "require_approval",
+      "reason": "Supply chain verification missing",
+      "explanation": "\u23f8\ufe0f  REQUIRING manual approval because: Supply chain verification missing This HIGH severity issue needs human review before proceeding. \ud83d\udccb Will open a security issue for tracking.",
+      "confidence": 0.9,
+      "severity": "HIGH",
+      "finding_id": "Missing SBOM (Software Bill of Materials)",
+      "automated_fix": null,
+      "pr_title": null,
+      "pr_body": null,
+      "issue_title": "\ud83d\udd12 Security: Missing SBOM (Software Bill of Materials)",
+      "issue_body": "## Security Finding\n\n**Category:** supply_chain\n**Severity:** HIGH\n**Confidence:** 90%\n**Location:** Repository\n\n## Description\n\nThere is no evidence of a Software Bill of Materials (SBOM) in the repository, which makes it difficult to track and manage dependencies.\n\n## Evidence\n\n```\nNo SBOM found\n```\n\n## Remediation Steps\n\nGenerate and maintain an SBOM using tools like CycloneDX or SPDX to track dependencies and their versions.\n\n## Impact\n\nThis HIGH severity issue should be addressed to maintain security posture.\n\n---\n\n*This issue was automatically created by SentinelCI security analysis.*\n*Labels: security, automated*\n"
+    },
+    {
+      "action": "warn_only",
+      "reason": "Supply chain security should be improved",
+      "explanation": "\u26a0\ufe0f  WARNING: Supply chain security should be improved This MEDIUM severity issue should be reviewed but won't block execution. \ud83d\udccb Will open a security issue for tracking.",
+      "confidence": 0.8,
+      "severity": "MEDIUM",
+      "finding_id": "No Provenance Attestation",
+      "automated_fix": null,
+      "pr_title": null,
+      "pr_body": null,
+      "issue_title": "\ud83d\udd12 Security: No Provenance Attestation",
+      "issue_body": "## Security Finding\n\n**Category:** supply_chain\n**Severity:** MEDIUM\n**Confidence:** 80%\n**Location:** Repository\n\n## Description\n\nThere is no evidence of provenance attestation in the repository, which makes it difficult to verify the origin and authenticity of artifacts.\n\n## Evidence\n\n```\nNo provenance attestation found\n```\n\n## Remediation Steps\n\nImplement provenance attestation using tools like in-toto or Grafeas to verify the origin and authenticity of artifacts.\n\n## Impact\n\nThis MEDIUM severity issue should be addressed to maintain security posture.\n\n---\n\n*This issue was automatically created by SentinelCI security analysis.*\n*Labels: security, automated*\n"
+    },
+    {
+      "action": "warn_only",
+      "reason": "Minor supply chain concern",
+      "explanation": "\u26a0\ufe0f  WARNING: Minor supply chain concern This LOW severity issue should be reviewed but won't block execution. \u26a1 Confidence: 40% - May require verification.",
+      "confidence": 0.4,
+      "severity": "LOW",
+      "finding_id": "Unsigned Artifacts",
+      "automated_fix": null,
+      "pr_title": null,
+      "pr_body": null,
+      "issue_title": null,
+      "issue_body": null
+    },
+    {
+      "action": "warn_only",
+      "reason": "Minor supply chain concern",
+      "explanation": "\u26a0\ufe0f  WARNING: Minor supply chain concern This LOW severity issue should be reviewed but won't block execution. \u26a1 Confidence: 40% - May require verification.",
+      "confidence": 0.4,
+      "severity": "LOW",
+      "finding_id": "Insecure Build Processes",
+      "automated_fix": null,
+      "pr_title": null,
+      "pr_body": null,
+      "issue_title": null,
+      "issue_body": null
+    }
+  ],
+  "overall_action": "require_approval",
+  "explanation": "\u23f8\ufe0f  Manual approval REQUIRED due to 1 HIGH severity issue(s). Security review needed before proceeding.",
+  "blocked": false,
+  "requires_approval": true,
+  "fixes_suggested": 0,
+  "issues_to_open": 3,
+  "prs_to_create": 0
+}
