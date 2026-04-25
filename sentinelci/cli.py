@@ -554,6 +554,36 @@ def setup() -> None:
 
 
 @github.command()
+def logout() -> None:
+    """Remove GitHub Personal Access Token (logout)"""
+    from sentinelci.config import get_config
+
+    try:
+        config = get_config()
+        
+        # Check if PAT exists
+        if not config.get_github_pat():
+            click.echo("ℹ️  No GitHub PAT configured - already logged out")
+            return
+        
+        # Confirm logout
+        if not click.confirm("Remove GitHub PAT and logout?", default=False):
+            click.echo("❌ Logout cancelled")
+            return
+        
+        # Remove PAT from config
+        config.remove("git", "github_pat")
+        
+        click.echo("✅ GitHub PAT removed successfully")
+        click.echo("ℹ️  You are now logged out")
+        click.echo("\nRun 'sci github setup' to login again")
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        sys.exit(1)
+
+
+@github.command()
 @click.option("--multi", is_flag=True, help="Select multiple repositories")
 @click.option("--search", default=None, help="Filter repositories by name/description")
 @click.option("--visibility", type=click.Choice(["public", "private"]), help="Filter by visibility")

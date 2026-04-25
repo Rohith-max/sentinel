@@ -96,6 +96,12 @@ class Config:
         self._config[section][key] = value
         self.save()
 
+    def remove(self, section: str, key: str) -> None:
+        """Remove a configuration value and save to file"""
+        if section in self._config and key in self._config[section]:
+            del self._config[section][key]
+            self.save()
+
     def save(self) -> None:
         """Save configuration to file"""
         self.config_dir.mkdir(parents=True, exist_ok=True)

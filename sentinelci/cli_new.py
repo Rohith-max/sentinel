@@ -151,6 +151,29 @@ def setup():
 
 
 @github_app.command()
+def logout():
+    """Remove GitHub Personal Access Token (logout)"""
+    config = get_config()
+    
+    # Check if PAT exists
+    if not config.get_github_pat():
+        console.print("ℹ️  No GitHub PAT configured - already logged out")
+        return
+    
+    # Confirm logout
+    if not Confirm.ask("Remove GitHub PAT and logout?", default=False):
+        console.print("❌ Logout cancelled")
+        return
+    
+    # Remove PAT from config
+    config.remove("git", "github_pat")
+    
+    console.print("✅ GitHub PAT removed successfully")
+    console.print("ℹ️  You are now logged out")
+    console.print("\nRun [cyan]sci github setup[/cyan] to login again")
+
+
+@github_app.command()
 def repos(
     search: Optional[str] = typer.Option(None, help="Filter by name/description"),
     visibility: Optional[str] = typer.Option(None, help="Filter by public/private"),
