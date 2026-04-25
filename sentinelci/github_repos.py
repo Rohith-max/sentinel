@@ -1,0 +1,309 @@
+"""
+GitHub repository fetching and selection
+"""
+
+import sys
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import requests
+
+from sentinelci.github_auth import GitHubAuth, GitHubAuthError
+
+
+class GitHubRepoManager:
+    """Manages GitHub repository operations"""
+
+    def __init__(self):
+        self.auth = GitHubAuth()
+        self.base_url = "https://api.github.com"
+
+    def _get_headers(self) -> Dict[str, str]:
+        """Get authenticated request headers"""
+        pat = self.auth.get_pat()
+        if not pat:
+            raise GitHubAuthError("No GitHub PAT configured")
+
+        return {
+            "Authorization": f"token {pat}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+
+    def fetch_all_repositories(self, include_orgs: bool = True) -> List[Dict[str, Any]]:
+        """
+        Fetch all repositories accessible by authenticated user
+
+        Args:
+            include_orgs: Include organization repositories
+
+        Returns:
+            List of repository dicts with metadata
+        """
+        self.auth.ensure_authenticated()
+        repos = []
+
+        try:
+            page = 1
+            per_page = 100
+
+            while True:
+                response = requests.get(
+                    f"{self.base_url}/user/repos",
+                    headers=self._get_headers(),
+                    params={
+                        "per_page": per_page,
+                        "page": page,
+                        "sort": "updated",
+                        "affiliation": "owner,collaborator,organization_member" if include_orgs else "owner",
+                    },
+                    timeout=15,
+                )
+
+                if response.status_code != 200:
+                    raise GitHubAuthError(f"Failed to fetch repositories: {response.status_code}")
+
+                batch = response.json()
+                if not batch:
+                    break
+
+                repos.extend(batch)
+                page += 1
+
+                if len(batch) < per_page:
+                    break
+
+        except requests.exceptions.RequestException as e:
+            raise GitHubAuthError(f"Network error: {str(e)}")
+
+        return self._enrich_repositories(repos)
+
+    def _enrich_repositories(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Enrich repository data with additional metadata
+
+        Args:
+            repos: List of repository dicts from GitHub API
+
+        Returns:
+            Enriched repository list
+        """
+        enriched = []
+
+        for repo in repos:
+            try:
+                pr_count = self._get_open_pr_count(repo["full_name"])
+            except Exception:
+                pr_count = 0
+
+            enriched_repo = {
+                "name": repo["name"],
+                "full_name": repo["full_name"],
+                "owner": repo["owner"]["login"],
+                "visibility": "private" if repo["private"] else "public",
+                "default_branch": repo.get("default_branch", "main"),
+                "description": repo.get("description", ""),
+                "last_updated": repo.get("updated_at", ""),
+                "last_pushed": repo.get("pushed_at", ""),
+                "open_prs": pr_count,
+                "stars": repo.get("stargazers_count", 0),
+                "forks": repo.get("forks_count", 0),
+                "language": repo.get("language", ""),
+                "url": repo["html_url"],
+                "clone_url": repo["clone_url"],
+                "ssh_url": repo["ssh_url"],
+            }
+
+            enriched.append(enriched_repo)
+
+        return enriched
+
+    def _get_open_pr_count(self, full_name: str) -> int:
+        """Get count of open pull requests for a repository"""
+        try:
+            response = requests.get(
+                f"{self.base_url}/repos/{full_name}/pulls",
+                headers=self._get_headers(),
+                params={"state": "open", "per_page": 1},
+                timeout=5,
+            )
+
+            if response.status_code == 200:
+                link_header = response.headers.get("Link", "")
+                if "last" in link_header:
+                    import re
+                    match = re.search(r'page=(\d+)>; rel="last"', link_header)
+                    if match:
+                        return int(match.group(1))
+                return len(response.json())
+
+        except Exception:
+            pass
+
+        return 0
+
+    def select_repositories_interactive(
+        self,
+        repos: List[Dict[str, Any]],
+        multi_select: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """
+        Interactive repository selection using questionary
+
+        Args:
+            repos: List of repositories to choose from
+            multi_select: Allow multiple selection
+
+        Returns:
+            List of selected repositories
+        """
+        try:
+            import questionary
+            from questionary import Choice
+        except ImportError:
+            print("⚠️  questionary not installed. Install with: pip install questionary")
+            return self._fallback_selection(repos, multi_select)
+
+        if not repos:
+            print("No repositories found")
+            return []
+
+        choices = []
+        for repo in repos:
+            last_update = self._format_date(repo["last_pushed"])
+            pr_info = f" ({repo['open_prs']} PRs)" if repo['open_prs'] > 0 else ""
+            
+            label = (
+                f"{repo['full_name']:<50} "
+                f"[{repo['visibility']:<7}] "
+                f"{repo['default_branch']:<15} "
+                f"Updated: {last_update:<12}"
+                f"{pr_info}"
+            )
+
+            choices.append(Choice(title=label, value=repo))
+
+        try:
+            if multi_select:
+                selected = questionary.checkbox(
+                    "Select repositories (Space to select, Enter to confirm):",
+                    choices=choices,
+                ).ask()
+            else:
+                selected = questionary.select(
+                    "Select a repository:",
+                    choices=choices,
+                ).ask()
+                selected = [selected] if selected else []
+
+            return selected if selected else []
+
+        except KeyboardInterrupt:
+            print("\n❌ Selection cancelled")
+            return []
+
+    def _fallback_selection(
+        self,
+        repos: List[Dict[str, Any]],
+        multi_select: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Fallback selection when questionary is not available"""
+        print("\n📋 Available Repositories:\n")
+
+        for idx, repo in enumerate(repos, 1):
+            last_update = self._format_date(repo["last_pushed"])
+            pr_info = f" ({repo['open_prs']} PRs)" if repo['open_prs'] > 0 else ""
+            
+            print(
+                f"{idx:3}. {repo['full_name']:<50} "
+                f"[{repo['visibility']:<7}] "
+                f"{repo['default_branch']:<15} "
+                f"Updated: {last_update:<12}"
+                f"{pr_info}"
+            )
+
+        print()
+
+        if multi_select:
+            selection = input("Enter repository numbers (comma-separated, e.g., 1,3,5): ").strip()
+            try:
+                indices = [int(x.strip()) - 1 for x in selection.split(",") if x.strip()]
+                return [repos[i] for i in indices if 0 <= i < len(repos)]
+            except (ValueError, IndexError):
+                print("❌ Invalid selection")
+                return []
+        else:
+            selection = input("Enter repository number: ").strip()
+            try:
+                idx = int(selection) - 1
+                if 0 <= idx < len(repos):
+                    return [repos[idx]]
+            except ValueError:
+                pass
+
+            print("❌ Invalid selection")
+            return []
+
+    def filter_repositories(
+        self,
+        repos: List[Dict[str, Any]],
+        search: Optional[str] = None,
+        visibility: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Filter repositories by criteria
+
+        Args:
+            repos: List of repositories
+            search: Search term for name/description
+            visibility: Filter by public/private
+            language: Filter by programming language
+
+        Returns:
+            Filtered repository list
+        """
+        filtered = repos
+
+        if search:
+            search_lower = search.lower()
+            filtered = [
+                r for r in filtered
+                if search_lower in r["name"].lower()
+                or search_lower in r.get("description", "").lower()
+            ]
+
+        if visibility:
+            filtered = [r for r in filtered if r["visibility"] == visibility.lower()]
+
+        if language:
+            filtered = [
+                r for r in filtered
+                if r.get("language", "").lower() == language.lower()
+            ]
+
+        return filtered
+
+    def _format_date(self, date_str: str) -> str:
+        """Format ISO date string to relative time"""
+        if not date_str:
+            return "Unknown"
+
+        try:
+            date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            now = datetime.now(date.tzinfo)
+            delta = now - date
+
+            if delta.days == 0:
+                return "Today"
+            elif delta.days == 1:
+                return "Yesterday"
+            elif delta.days < 7:
+                return f"{delta.days}d ago"
+            elif delta.days < 30:
+                return f"{delta.days // 7}w ago"
+            elif delta.days < 365:
+                return f"{delta.days // 30}mo ago"
+            else:
+                return f"{delta.days // 365}y ago"
+
+        except Exception:
+            return date_str[:10]
