@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+
+const { spawn } = require('cross-spawn');
+const which = require('which');
+const path = require('path');
+
+async function main() {
+  try {
+    // Check if Python is available
+    const pythonCmd = await findPython();
+    if (!pythonCmd) {
+      console.error('Error: Python 3.11+ is required but not found.');
+      console.error('Please install Python from https://python.org/downloads/');
+      process.exit(1);
+    }
+
+    // Check if sentinelci is installed via pip
+    const result = spawn.sync(pythonCmd, ['-c', 'import sentinelci'], { stdio: 'pipe' });
+    
+    if (result.status !== 0) {
+      console.log('Installing SentinelCI Python package...');
+      const installResult = spawn.sync(pythonCmd, ['-m', 'pip', 'install', 'sentinelci'], { 
+        stdio: 'inherit' 
+      });
+      
+      if (installResult.status !== 0) {
+        console.error('Failed to install SentinelCI Python package.');
+        console.error('Please run: pip install sentinelci');
+        process.exit(1);
+      }
+    }
+
+    // Run the actual SentinelCI command
+    const args = process.argv.slice(2);
+    const child = spawn(pythonCmd, ['-m', 'sentinelci.cli'].concat(args), { 
+      stdio: 'inherit' 
+    });
+
+    child.on('exit', (code) => {
+      process.exit(code || 0);
+    });
+
+  } catch (error) {
+    console.error('Error running SentinelCI:', error.message);
+    process.exit(1);
+  }
+}
+
+async function findPython() {
+  const candidates = ['python3', 'python', 'py'];
+  
+  for (const cmd of candidates) {
+    try {
+      const pythonPath = await which(cmd);
+      const result = spawn.sync(cmd, ['--version'], { stdio: 'pipe' });
+      
+      if (result.status === 0) {
+        const version = result.stdout.toString().trim();
+        const match = version.match(/Python (\d+)\.(\d+)/);
+        
+        if (match) {
+          const major = parseInt(match[1]);
+          const minor = parseInt(match[2]);
+          
+          if (major === 3 && minor >= 11) {
+            return cmd;
+          }
+        }
+      }
+    } catch (error) {
+      // Continue to next candidate
+    }
+  }
+  
+  return null;
+}
+
+if (require.main === module) {
+  main();
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+
+// Alias for sci command
+require('./sci');
