@@ -1,0 +1,24 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include MANIFEST.in
+
+# Include all Python files
+recursive-include sentinelci *.py
+
+# Include configuration files
+include sentinelci/config/*.toml
+include sentinelci/config/*.json
+
+# Exclude development and build files
+exclude .env*
+exclude *.log
+exclude .git*
+exclude .pytest_cache
+exclude __pycache__
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+exclude build/
+exclude dist/
+exclude *.egg-info/

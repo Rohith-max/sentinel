@@ -563,23 +563,35 @@ def logout() -> None:
         
         # Check if PAT exists
         if not config.get_github_pat():
-            click.echo("ℹ️  No GitHub PAT configured - already logged out")
+            click.echo("INFO: No GitHub PAT configured - already logged out")
             return
         
         # Confirm logout
         if not click.confirm("Remove GitHub PAT and logout?", default=False):
-            click.echo("❌ Logout cancelled")
+            click.echo("Logout cancelled")
             return
         
         # Remove PAT from config
         config.remove("git", "github_pat")
         
-        click.echo("✅ GitHub PAT removed successfully")
-        click.echo("ℹ️  You are now logged out")
+        click.echo("SUCCESS: GitHub PAT removed successfully")
+        click.echo("INFO: You are now logged out")
         click.echo("\nRun 'sci github setup' to login again")
         
     except Exception as e:
-        click.echo(f"❌ Error: {str(e)}", err=True)
+        click.echo(f"ERROR: {str(e)}", err=True)
+        sys.exit(1)
+
+
+@github.command()
+def verify() -> None:
+    """Verify autonomous agent execution results"""
+    from sentinelci.core.verification import verify_latest_execution
+    
+    try:
+        verify_latest_execution()
+    except Exception as e:
+        click.echo(f"ERROR: {str(e)}", err=True)
         sys.exit(1)
 
 

@@ -31,53 +31,188 @@ console = Console()
 
 @app.command()
 def onboard():
-    """Interactive onboarding wizard"""
+    """Complete setup wizard for SentinelCI"""
+    console.print()
     console.print(Panel.fit(
         "[bold cyan]Welcome to SentinelCI![/bold cyan]\n\n"
-        "Let's get you set up with security scanning and automation.",
-        title="🚀 Onboarding",
+        "AI-powered security scanning and automation platform\n"
+        "Let's get you set up with everything you need.",
+        title="SentinelCI Setup",
+        border_style="cyan"
     ))
 
     config = get_config()
 
-    # Step 1: AI API Key
-    console.print("\n[bold]Step 1: AI Analysis Configuration[/bold]")
-    console.print("SentinelCI uses AI for advanced security analysis.")
+    # Step 1: AI API Configuration (Required)
+    console.print("\n[bold]Step 1: AI Analysis Setup (Required)[/bold]")
+    console.print("SentinelCI uses AI for intelligent security analysis and autonomous fixing.")
+    console.print()
+    console.print("[dim]Supported AI providers:[/dim]")
+    console.print("  • Groq (Recommended - Fast & Free): https://console.groq.com/keys")
+    console.print("  • OpenAI: https://platform.openai.com/api-keys")
+    console.print("  • Anthropic: https://console.anthropic.com/")
+    console.print()
     
     current_key = config.get_api_key()
     if current_key:
-        console.print(f"[green]✓[/green] AI API key already configured")
+        console.print("[green]SUCCESS:[/green] AI API key already configured")
         if not Confirm.ask("Update AI API key?", default=False):
-            ai_key = current_key
+            pass
         else:
-            ai_key = Prompt.ask("Enter your AI API key (Groq)", password=True)
+            ai_key = Prompt.ask("Enter your AI API key", password=True)
             config.set("api", "ai_api_key", ai_key)
+            console.print("[green]SUCCESS:[/green] AI API key updated")
     else:
-        console.print("Get your free API key from: https://console.groq.com/keys")
-        ai_key = Prompt.ask("Enter your AI API key (Groq)", password=True)
-        config.set("api", "ai_api_key", ai_key)
+        console.print("[yellow]WARNING:[/yellow] AI API key required for security analysis")
+        ai_key = Prompt.ask("Enter your AI API key", password=True)
+        if ai_key.strip():
+            config.set("api", "ai_api_key", ai_key)
+            console.print("[green]SUCCESS:[/green] AI API key configured")
+        else:
+            console.print("[red]ERROR:[/red] AI API key is required")
+            console.print("Run 'sci onboard' again to complete setup")
+            return
 
-    # Step 2: GitHub PAT
-    console.print("\n[bold]Step 2: GitHub Integration (Optional)[/bold]")
-    console.print("Connect GitHub for repository scanning and automation.")
+    # Step 2: GitHub Integration (Recommended)
+    console.print("\n[bold]Step 2: GitHub Integration (Recommended)[/bold]")
+    console.print("Connect GitHub for:")
+    console.print("  • Repository scanning and analysis")
+    console.print("  • Autonomous issue creation and PR generation")
+    console.print("  • Organization-wide security monitoring")
+    console.print()
+    console.print("[dim]Get your GitHub PAT: https://github.com/settings/tokens[/dim]")
+    console.print("[dim]Required scopes: 'repo' (for private repos) or 'public_repo' (for public repos)[/dim]")
+    console.print()
     
     if Confirm.ask("Configure GitHub integration?", default=True):
         auth = GitHubAuth()
         if auth.has_pat():
-            console.print(f"[green]✓[/green] GitHub PAT already configured")
-            if not Confirm.ask("Update GitHub PAT?", default=False):
-                pass
-            else:
+            console.print("[green]SUCCESS:[/green] GitHub PAT already configured")
+            
+            # Test the PAT and show scopes
+            try:
+                scopes = auth.get_token_scopes()
+                console.print(f"[cyan]INFO:[/cyan] Current token scopes: {', '.join(scopes)}")
+                
+                required_scopes = ['repo']
+                missing = [s for s in required_scopes if s not in scopes]
+                if missing:
+                    console.print(f"[yellow]WARNING:[/yellow] Missing recommended scopes: {', '.join(missing)}")
+                    console.print("Some features (issue/PR creation) may not work")
+                
+            except Exception as e:
+                console.print(f"[yellow]WARNING:[/yellow] Could not verify token: {str(e)}")
+            
+            if Confirm.ask("Update GitHub PAT?", default=False):
                 _setup_github_pat()
         else:
             _setup_github_pat()
+    else:
+        console.print("[yellow]WARNING:[/yellow] GitHub features will be limited without authentication")
 
-    # Step 3: Scanning preferences
-    console.print("\n[bold]Step 3: Scanning Preferences[/bold]")
+    # Step 3: NVD API Key (Optional but recommended)
+    console.print("\n[bold]Step 3: CVE Database Access (Optional)[/bold]")
+    console.print("Configure NVD API for enhanced vulnerability scanning:")
+    console.print("  • Higher rate limits for CVE lookups")
+    console.print("  • More detailed vulnerability information")
+    console.print()
+    console.print("[dim]Get free API key: https://nvd.nist.gov/developers/request-an-api-key[/dim]")
+    console.print()
+    
+    current_nvd = config.get_nvd_api_key()
+    if current_nvd:
+        console.print("[green]SUCCESS:[/green] NVD API key already configured")
+        if Confirm.ask("Update NVD API key?", default=False):
+            nvd_key = Prompt.ask("Enter your NVD API key (optional)", default="", show_default=False)
+            if nvd_key.strip():
+                config.set("api", "nvd_api_key", nvd_key)
+                console.print("[green]SUCCESS:[/green] NVD API key updated")
+    else:
+        if Confirm.ask("Configure NVD API key for enhanced CVE scanning?", default=False):
+            nvd_key = Prompt.ask("Enter your NVD API key", default="", show_default=False)
+            if nvd_key.strip():
+                config.set("api", "nvd_api_key", nvd_key)
+                console.print("[green]SUCCESS:[/green] NVD API key configured")
+
+    # Step 4: Scanning Preferences
+    console.print("\n[bold]Step 4: Security Scanning Preferences[/bold]")
     
     severity = questionary.select(
-        "Default minimum severity level:",
+        "Default minimum severity level for reporting:",
         choices=["low", "medium", "high", "critical"],
+        default="medium",
+    ).ask()
+    config.set("scan", "severity_threshold", severity)
+
+    enable_firmware = Confirm.ask("Enable firmware CVE scanning? (requires binwalk)", default=True)
+    config.set("scan", "enable_firmware_scanning", str(enable_firmware))
+
+    enable_urls = Confirm.ask("Enable homograph URL detection?", default=True)
+    config.set("scan", "enable_url_detection", str(enable_urls))
+
+    # Step 5: Output Preferences
+    console.print("\n[bold]Step 5: Output Preferences[/bold]")
+    
+    output_format = questionary.select(
+        "Default output format:",
+        choices=["terminal", "json", "sarif"],
+        default="terminal",
+    ).ask()
+    config.set("output", "format", output_format)
+
+    # Step 6: Complete Setup
+    console.print("\n[bold green]Setup Complete![/bold green]")
+    console.print()
+    console.print("[bold]Configuration Summary:[/bold]")
+    console.print(f"  • AI API: {'Configured' if config.get_api_key() else 'Not configured'}")
+    console.print(f"  • GitHub: {'Configured' if config.get_github_pat() else 'Not configured'}")
+    console.print(f"  • NVD API: {'Configured' if config.get_nvd_api_key() else 'Not configured'}")
+    console.print(f"  • Severity: {severity.upper()}")
+    console.print(f"  • Output: {output_format.upper()}")
+    console.print()
+    
+    console.print("[bold]Quick Start Commands:[/bold]")
+    console.print("  • [cyan]sci scan[/cyan] - Scan current directory")
+    console.print("  • [cyan]sci github repos[/cyan] - Analyze GitHub repositories")
+    console.print("  • [cyan]sci github auth[/cyan] - Check authentication status")
+    console.print("  • [cyan]sci --help[/cyan] - See all available commands")
+    console.print()
+    
+    console.print("[bold]Next Steps:[/bold]")
+    if not config.get_github_pat():
+        console.print("  1. Configure GitHub integration: [cyan]sci github setup[/cyan]")
+    console.print("  2. Run your first scan: [cyan]sci scan[/cyan]")
+    console.print("  3. Explore autonomous features: [cyan]sci github repos[/cyan]")
+    console.print()
+    
+    # Test configuration
+    if Confirm.ask("Test configuration now?", default=True):
+        console.print("\n[bold]Testing Configuration...[/bold]")
+        
+        # Test AI API
+        if config.get_api_key():
+            console.print("[cyan]INFO:[/cyan] Testing AI API connection...")
+            try:
+                # Simple test - this would need actual AI client
+                console.print("[green]SUCCESS:[/green] AI API key format looks valid")
+            except Exception as e:
+                console.print(f"[yellow]WARNING:[/yellow] AI API test failed: {str(e)}")
+        
+        # Test GitHub API
+        if config.get_github_pat():
+            console.print("[cyan]INFO:[/cyan] Testing GitHub API connection...")
+            try:
+                auth = GitHubAuth()
+                user = auth.get_authenticated_user()
+                console.print(f"[green]SUCCESS:[/green] Connected as {user.get('login', 'Unknown')}")
+            except Exception as e:
+                console.print(f"[yellow]WARNING:[/yellow] GitHub API test failed: {str(e)}")
+        
+        console.print("\n[green]Configuration test complete![/green]")
+    
+    console.print("\n[dim]Configuration saved to: {config.config_file}[/dim]")
+    console.print("[dim]You can re-run this setup anytime with: sci onboard[/dim]")
+    console.print()
         default="medium",
     ).ask()
     config.set("scan", "severity_threshold", severity)

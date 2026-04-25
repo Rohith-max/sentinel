@@ -3,44 +3,112 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sci"
-version = "0.1.0"
-description = "Security scanning CLI tool with AI-powered threat analysis"
+name = "sentinelci"
+version = "1.0.0"
+description = "AI-powered security scanning and autonomous remediation platform"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "SCI Team"}
+    {name = "SentinelCI Team", email = "team@sentinelci.dev"}
 ]
-keywords = ["security", "cli", "scanner", "secrets", "cve", "ai"]
+maintainers = [
+    {name = "SentinelCI Team", email = "team@sentinelci.dev"}
+]
+keywords = [
+    "security", 
+    "cli", 
+    "scanner", 
+    "secrets", 
+    "cve", 
+    "ai", 
+    "autonomous", 
+    "remediation",
+    "github",
+    "cicd",
+    "devsecops"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Systems Administration",
+]
 
 dependencies = [
-    "click==8.1.7",
-    "typer==0.9.0",
-    "rich==13.7.0",
-    "groq==0.31.0",
-    "requests==2.31.0",
-    "platformdirs==4.0.0",
-    "tomli-w==1.0.0",
-    "questionary==2.0.1",
+    "click>=8.1.7",
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "groq>=0.31.0",
+    "requests>=2.31.0",
+    "platformdirs>=4.0.0",
+    "tomli-w>=1.0.0",
+    "questionary>=2.0.1",
+    "tomli>=2.0.0;python_version<'3.11'",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==7.4.0",
-    "pytest-asyncio==0.21.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
 ]
+all = [
+    "sentinelci[dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/sentinelci/sentinelci"
+Documentation = "https://docs.sentinelci.dev"
+Repository = "https://github.com/sentinelci/sentinelci"
+Issues = "https://github.com/sentinelci/sentinelci/issues"
+Changelog = "https://github.com/sentinelci/sentinelci/releases"
 
 [project.scripts]
 sci = "sentinelci.cli:main"
+sentinelci = "sentinelci.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sentinelci"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/sentinelci",
+    "/README.md",
+    "/LICENSE",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "T20"]
+ignore = ["S101", "S603", "S607"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

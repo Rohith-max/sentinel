@@ -1,421 +1,261 @@
-# SentinelCI - AI-Powered Security Automation Platform
+# SentinelCI
 
-A comprehensive security automation platform that scans, analyzes, and remediates security issues across your codebase and GitHub repositories.
+**AI-Powered Security Scanning and Autonomous Remediation Platform**
 
-## 🚀 Key Features
+[![PyPI version](https://badge.fury.io/py/sentinelci.svg)](https://badge.fury.io/py/sentinelci)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-### Core Scanning
-- **Secret Scanning**: Detect hardcoded secrets using TruffleHog with enhanced false positive detection
-- **Homograph Detection**: Identify visual URL spoofing attempts
-- **CVE Analysis**: Scan firmware for known vulnerabilities using NVD API
-- **Real-time Monitoring**: Watch mode for continuous security scanning
+SentinelCI is an advanced security scanning platform that combines AI-powered analysis with autonomous remediation capabilities. It detects vulnerabilities, security misconfigurations, and compliance issues across your codebase and CI/CD pipelines, then automatically creates fixes and pull requests.
 
-### AI-Powered Analysis
-- **Advanced Threat Detection**: AI-powered analysis for:
-  - Hardcoded secrets exposure
-  - Suspicious outbound calls
-  - Dependency hash mismatch risks
-  - Privilege escalation in workflows
-  - Over-permissioned GitHub Actions tokens
-  - Untrusted third-party actions
-  - Supply chain security risks
+## 🚀 Quick Start
 
-### Automated Remediation ✨ NEW
-- **Pull Request Generation**: Automatically create PRs with security fixes
-- **Issue Creation**: Generate detailed security issues
-- **Automated Fixes**: Apply fixes for:
-  - Secret removal
-  - Dependency pinning
-  - Workflow permission tightening
-  - Unsafe action replacement
-
-### Incident Visualization ✨ NEW
-- **Security Incident Graphs**: Visualize relationships between:
-  - Commits → Secrets → Workflows → Alerts
-  - Dependencies and vulnerabilities
-  - Pipeline events and failures
-- **Attack Chain Timeline**: See how compromises could propagate
-- **Risk Heatmaps**: Organization-wide security overview
-
-### Organization Scanning ✨ NEW
-- **Multi-Repository Analysis**: Scan entire organizations
-- **Risk Ranking**: Identify riskiest repositories
-- **Pattern Detection**: Find cross-repo security issues
-- **Policy Enforcement**: Track org-wide violations
-
-### Autonomous Decision Engine
-- **Intelligent Responses**: Automated decision-making:
-  - Warn only
-  - Block pipeline
-  - Require manual approval
-  - Suggest automated fixes
-  - Open security issues
-  - Create pull requests with remediation
-
-### Modern CLI ✨ NEW
-- **Interactive Onboarding**: Guided setup wizard
-- **Rich Terminal UI**: Beautiful, informative output
-- **GitHub Integration**: Deep repository analysis
-- **Multiple Output Formats**: Terminal, JSON, Markdown, HTML
-
-## 📦 Installation
+### Installation
 
 ```bash
-# Install from source
-git clone https://github.com/Rohith-max/sentinel.git
-cd sentinel
-pip install -e .
-
-# Or install from PyPI (coming soon)
 pip install sentinelci
 ```
 
-## 🎯 Quick Start
-
-### First-Time Setup
+### Initial Setup
 
 ```bash
-# Interactive onboarding wizard
-python -m sentinelci.cli_new onboard
-```
+# Run the interactive setup wizard
+sci onboard
 
-This will guide you through:
-1. AI API key configuration
-2. GitHub integration setup
-3. Scanning preferences
+# Or set up manually
+sci github setup  # Configure GitHub integration
+```
 
 ### Basic Usage
 
 ```bash
-# Scan local code
+# Scan current directory
 sci scan
 
-# Scan GitHub repositories
-python -m sentinelci.cli_new github repos --search "myproject"
+# Analyze GitHub repositories
+sci github repos
 
-# Scan entire organization
-python -m sentinelci.cli_new github scan-org YOUR_ORG --output report.json
-
-# Auto-fix issues
-sci fix --dry-run  # Preview fixes
-sci fix            # Apply fixes
+# Run autonomous security agent
+sci github repos
+# Select repository → "Autonomous Agent (Full Automation)"
 ```
 
-## 📚 Documentation
+## ✨ Key Features
 
-- **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
-- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Comprehensive setup and migration guide
-- **[CLI_QUICK_REFERENCE.md](CLI_QUICK_REFERENCE.md)** - Command reference
-- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - Architecture details
-- **[PROJECT_STATUS_REPORT.md](PROJECT_STATUS_REPORT.md)** - Current status and roadmap
+### 🔍 **Comprehensive Security Scanning**
+- **Secret Detection**: Finds hardcoded API keys, tokens, passwords
+- **Vulnerability Analysis**: CVE scanning with NVD integration
+- **Dependency Scanning**: Identifies vulnerable packages and versions
+- **CI/CD Security**: Analyzes GitHub Actions workflows for security issues
+- **Code Quality**: Detects security anti-patterns and misconfigurations
 
-## 🎨 Usage Examples
+### 🤖 **AI-Powered Analysis**
+- **Intelligent Threat Detection**: AI analyzes context and severity
+- **False Positive Reduction**: Smart filtering reduces noise
+- **Risk Assessment**: Automated severity scoring and impact analysis
+- **Contextual Recommendations**: Tailored fix suggestions
 
-### Example 1: Complete Security Audit
+### 🛠️ **Autonomous Remediation**
+- **Automatic Issue Creation**: Creates GitHub issues for tracking
+- **Pull Request Generation**: Generates PRs with security fixes
+- **Code Patching**: Applies fixes directly to repositories
+- **Pipeline Fixes**: Corrects CI/CD security misconfigurations
+- **No Cloning Required**: Uses GitHub API for remote operations
+
+### 🏢 **Enterprise Features**
+- **Organization Scanning**: Scan all repositories in an organization
+- **Risk Heatmaps**: Visual security dashboards
+- **Compliance Reporting**: Generate security reports
+- **Integration Ready**: Works with existing CI/CD pipelines
+
+## 📋 Requirements
+
+- **Python**: 3.11 or higher
+- **AI API Key**: Groq (recommended), OpenAI, or Anthropic
+- **GitHub PAT**: For repository analysis and autonomous features (optional)
+- **NVD API Key**: For enhanced CVE scanning (optional)
+
+## 🔧 Configuration
+
+### AI API Setup
+
+SentinelCI supports multiple AI providers:
+
+1. **Groq (Recommended - Fast & Free)**
+   - Get API key: https://console.groq.com/keys
+   - Set: `sci onboard` or `export AI_API_KEY=your_key`
+
+2. **OpenAI**
+   - Get API key: https://platform.openai.com/api-keys
+   - Set: `export AI_API_KEY=your_key`
+
+3. **Anthropic**
+   - Get API key: https://console.anthropic.com/
+   - Set: `export AI_API_KEY=your_key`
+
+### GitHub Integration
 
 ```bash
-# 1. Onboard (first time only)
-python -m sentinelci.cli_new onboard
+# Set up GitHub Personal Access Token
+sci github setup
 
-# 2. Scan organization
-python -m sentinelci.cli_new github scan-org acme-corp --output audit.json
-
-# 3. Analyze specific repository
-python -m sentinelci.cli_new github repos --search "api-gateway"
-# Select repository → Choose "Full Analysis + Visualization"
-
-# 4. Generate remediation PR
-# Select repository → Choose "Generate Security PR"
-```
-
-### Example 2: Incident Investigation
-
-```bash
-# Analyze repository and view incident graph
-python -m sentinelci.cli_new github repos --search "production-api"
-# Select → Choose "View Incident Graph"
-
-# Output:
-# - Visual graph of security relationships
-# - Attack chain timeline showing propagation
-# - Critical points identified
-# - JSON export for further analysis
-```
-
-### Example 3: Automated Remediation
-
-```bash
-# 1. Scan and analyze
-python -m sentinelci.cli_new github repos --search "backend"
-
-# 2. Simulate autonomous decisions
-# Select → Choose "Simulate Autonomous Decisions"
-
-# 3. Generate PRs with fixes
-# Select → Choose "Generate Security PR"
-
-# Result:
-# - Branch created: security/remove-secret-42
-# - File updated with fix
-# - PR created with detailed description
-# - Ready for review and merge
-```
-
-### Example 4: CI/CD Integration
-
-```bash
-# In your CI/CD pipeline:
-export AI_API_KEY=${{ secrets.AI_API_KEY }}
-export GITHUB_PAT=${{ secrets.GITHUB_PAT }}
-
-# Scan and halt on critical issues
-sci scan --diff --halt-on-critical --format json --output results.json
-```
-
-## 🔧 Commands
-
-### Getting Started
-```bash
-python -m sentinelci.cli_new onboard    # Interactive setup wizard
-sci version                              # Show version
-```
-
-### Code Scanning
-```bash
-sci scan                                 # Scan current directory
-sci scan --path /path/to/code           # Scan specific path
-sci scan --diff                          # Scan git diff only
-sci watch                                # Real-time monitoring
-sci fix                                  # Auto-fix issues
-sci fix --dry-run                        # Preview fixes
-```
-
-### GitHub Integration ✨ NEW
-```bash
-python -m sentinelci.cli_new github auth              # Check authentication
-python -m sentinelci.cli_new github setup             # Configure GitHub PAT
-python -m sentinelci.cli_new github repos             # List & analyze repositories
-python -m sentinelci.cli_new github scan-org ORG      # Scan entire organization
-```
-
-### Repository Actions (Interactive Menu)
-After selecting a repository:
-1. **Analyze Security Configuration** - Branch protection, alerts, workflows
-2. **Run AI Security Analysis** - Advanced threat detection
-3. **Simulate Autonomous Decisions** - Automated response simulation
-4. **Generate Security PR** ✨ NEW - Create PR with fixes
-5. **View Incident Graph** ✨ NEW - Visualize security relationships
-6. **Full Analysis + Visualization** - Complete security audit
-
-### Configuration & Reports
-```bash
-sci config                               # Configure settings
-sci report findings.json                 # Generate report
-sci hook install                         # Install git pre-commit hook
-```
-
-## ⚙️ Configuration
-
-### Config File Location
-- **User config**: `~/.config/sci/config.toml`
-- **Environment variables**: `.env` file in project root
-
-### Config Structure
-```toml
-[api]
-ai_api_key = "gsk_..."
-nvd_api_key = "your_nvd_key..."
-
-[git]
-github_pat = "ghp_..."
-
-[scan]
-severity_threshold = "medium"
-enable_firmware_scanning = true
-enable_url_detection = true
-
-[output]
-format = "terminal"
+# Required scopes:
+# - 'repo' (for private repositories)
+# - 'public_repo' (for public repositories)
 ```
 
 ### Environment Variables
+
 ```bash
-# AI Analysis
-AI_API_KEY=gsk_...
-GROQ_API_KEY=gsk_...
+# AI Configuration
+export AI_API_KEY="your_ai_api_key"
+export GROQ_API_KEY="your_groq_key"  # Alternative
 
-# GitHub Integration
-GITHUB_PAT=ghp_...
-GH_PAT=ghp_...
-GITHUB_TOKEN=ghp_...
+# GitHub Configuration  
+export GITHUB_PAT="your_github_token"
+export GITHUB_TOKEN="your_github_token"  # Alternative
 
-# CVE Scanning
-NVD_API_KEY=...
+# NVD Configuration (Optional)
+export NVD_API_KEY="your_nvd_key"
 ```
 
-## 🔐 GitHub Integration
+## 📖 Usage Examples
 
-### Setup
+### Local Scanning
 
 ```bash
-# Configure GitHub PAT
-python -m sentinelci.cli_new github setup
+# Basic scan
+sci scan
+
+# Scan with specific severity
+sci scan --severity high
+
+# Output to JSON
+sci scan --output results.json --format json
+
+# Watch mode (continuous scanning)
+sci scan --watch
+```
+
+### GitHub Repository Analysis
+
+```bash
+# List and analyze repositories
+sci github repos
+
+# Scan specific organization
+sci github scan-org your-org-name
 
 # Check authentication
-python -m sentinelci.cli_new github auth
+sci github auth
 ```
 
-### Features
+### Autonomous Security Agent
 
-**Repository Analysis:**
-- Security configuration audit
-- Branch protection review
-- Secret scanning alerts
-- Dependabot alerts
-- Workflow analysis
-- Risk scoring
-
-**AI Security Analysis:**
-- Hardcoded secrets detection
-- Suspicious outbound calls
-- Dependency vulnerabilities
-- Privilege escalation
-- Over-permissioned tokens
-- Untrusted third-party actions
-- Supply chain risks
-
-**Automated Remediation:** ✨ NEW
-- Generate PRs with security fixes
-- Create security issues
-- Automated branch management
-- File updates via GitHub API
-
-**Incident Visualization:** ✨ NEW
-- Security relationship graphs
-- Attack chain timelines
-- Propagation analysis
-- Risk assessment
-
-**Organization Scanning:** ✨ NEW
-- Scan all org repositories
-- Aggregate risk heatmap
-- Cross-repo pattern detection
-- Policy violation tracking
-
-### Usage
+The autonomous agent can automatically:
+- Detect security vulnerabilities
+- Create fixes and patches
+- Generate pull requests
+- Open tracking issues
+- Apply changes without manual intervention
 
 ```bash
-# List repositories with filters
-python -m sentinelci.cli_new github repos --search "api" --visibility private
-
-# Scan entire organization
-python -m sentinelci.cli_new github scan-org acme-corp --output report.json
-
-# Interactive repository analysis
-python -m sentinelci.cli_new github repos
-# Select repository → Choose action from menu
+sci github repos
+# Select repository
+# Choose "Autonomous Agent (Full Automation)"
+# Review and approve the execution plan
 ```
+
+### Pipeline Security Analysis
+
+```bash
+# Analyze CI/CD pipelines
+sci pipeline analyze .github/workflows/
+
+# Auto-fix pipeline issues
+sci pipeline fix .github/workflows/ci.yml
+```
+
+## 🔒 Security Categories
+
+SentinelCI detects and fixes:
+
+### **Secrets & Credentials**
+- API keys, tokens, passwords in code
+- Hardcoded credentials in configuration files
+- Exposed secrets in environment variables
+
+### **Dependencies & Supply Chain**
+- Vulnerable package versions
+- Outdated dependencies
+- Malicious packages
+- License compliance issues
+
+### **CI/CD Pipeline Security**
+- Excessive workflow permissions
+- Unpinned action versions
+- Code injection vulnerabilities
+- Missing security checks
+
+### **Code Security**
+- SQL injection patterns
+- XSS vulnerabilities
+- Insecure cryptographic practices
+- Authentication bypasses
 
 ## 🏗️ Architecture
 
-### Modular Structure
-
 ```
-sentinelci/
-├── core/                    # Core modules
-│   ├── auth.py             # GitHub authentication
-│   ├── discovery.py        # Repository discovery
-│   ├── remediation.py      # PR/Issue generation
-│   └── visualization.py    # Graphs & heatmaps
-├── cli_new.py              # Modern CLI (Typer)
-├── scanner.py              # Code scanning engine
-├── ai_analyzer.py          # AI security analysis
-├── autonomous_engine.py    # Decision engine
-├── github_security.py      # GitHub analysis
-└── config.py               # Configuration
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Scanner       │    │   AI Analyzer    │    │  Autonomous     │
+│   Engine        │───▶│   (Groq/OpenAI)  │───▶│  Agent          │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                        │                       │
+         ▼                        ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Local Files   │    │   Threat Intel   │    │  GitHub API     │
+│   Git Repos     │    │   CVE Database   │    │  Issue/PR Gen   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-### Key Components
+## 🤝 Contributing
 
-- **Authentication**: Secure GitHub PAT management
-- **Discovery**: Repository and organization scanning
-- **Remediation**: Automated PR and issue generation
-- **Visualization**: Incident graphs and heatmaps
-- **Analysis**: AI-powered threat detection
-- **Automation**: Autonomous decision-making
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 🧪 Testing
+### Development Setup
 
 ```bash
-# Install development dependencies
+# Clone repository
+git clone https://github.com/sentinelci/sentinelci.git
+cd sentinelci
+
+# Install in development mode
 pip install -e ".[dev]"
 
 # Run tests
 pytest
 
-# Run specific test
-pytest tests/test_auth.py
-
-# Run with coverage
-pytest --cov=sentinelci
+# Format code
+black sentinelci/
+ruff check sentinelci/
 ```
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests
-5. Update documentation
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for development setup.
-
-## 📋 Roadmap
-
-### Completed ✅
-- Modular architecture
-- Automated remediation (PR/Issue generation)
-- Incident graph visualization
-- Organization-wide scanning
-- Interactive CLI with onboarding
-
-### In Progress 🚧
-- Comprehensive test suite
-- Performance optimizations
-- Web dashboard
-
-### Planned 📋
-- Parallel scanning
-- Custom rule engine
-- Slack/Teams notifications
-- CI/CD integrations
-- API server
-
-See [IMPLEMENTATION_CHECKLIST.md](IMPLEMENTATION_CHECKLIST.md) for details.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: https://docs.sentinelci.dev
+- **Issues**: https://github.com/sentinelci/sentinelci/issues
+- **Discussions**: https://github.com/sentinelci/sentinelci/discussions
 
 ## 🙏 Acknowledgments
 
-- TruffleHog for secret scanning
-- Groq for AI analysis
-- GitHub API for repository integration
-- Rich for terminal UI
-
-## 📞 Support
-
-- **Documentation**: See guides in repository
-- **Issues**: https://github.com/Rohith-max/sentinel/issues
-- **Discussions**: https://github.com/Rohith-max/sentinel/discussions
-- **Email**: support@sentinelci.dev
+- Built with [Typer](https://typer.tiangolo.com/) and [Rich](https://rich.readthedocs.io/)
+- AI powered by [Groq](https://groq.com/), [OpenAI](https://openai.com/), and [Anthropic](https://anthropic.com/)
+- Security data from [NVD](https://nvd.nist.gov/) and [GitHub Security Advisories](https://github.com/advisories)
 
 ---
 
-**Made with ❤️ by the SentinelCI Team** 
+**Made with ❤️ by the SentinelCI Team**
