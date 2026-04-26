@@ -1110,6 +1110,7 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
     import shutil
     import subprocess
     from pathlib import Path
+    import questionary
 
     try:
         click.echo(f"\n📦 Cloning repository: {repo['full_name']}")
@@ -1132,30 +1133,115 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                 click.echo(f"❌ Failed to clone: {result.stderr}")
                 return
             
-            click.echo(f"✅ Repository cloned to {repo_path}")
+            click.echo(f"✅ Repository cloned")
             
-            # Check for staged changes
-            status_result = subprocess.run(
-                ["git", "status", "--porcelain"],
+            # Get recent commits
+            click.echo("\n📜 Fetching recent commits...")
+            log_result = subprocess.run(
+                ["git", "log", "--oneline", "-20", "--no-decorate"],
                 cwd=repo_path,
                 capture_output=True,
                 text=True
             )
             
-            if not status_result.stdout.strip():
-                click.echo("\n⚠️  No staged changes found")
-                click.echo("💡 Make some changes and stage them with 'git add' first")
+            if log_result.returncode != 0:
+                click.echo(f"❌ Failed to get commits: {log_result.stderr}")
+                return
+            
+            # Parse commits
+            commits = []
+            for line in log_result.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                parts = line.split(" ", 1)
+                if len(parts) == 2:
+                    commit_hash, message = parts
+                    
+                    # Get commit stats
+                    stat_result = subprocess.run(
+                        ["git", "show", "--stat", "--format=", commit_hash],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    # Count files changed
+                    files_changed = len([l for l in stat_result.stdout.split("\n") if "|" in l])
+                    
+                    commits.append({
+                        "hash": commit_hash,
+                        "message": message,
+                        "files_changed": files_changed,
+                        "display": f"{commit_hash} - {message} ({files_changed} files)"
+                    })
+            
+            if not commits:
+                click.echo("❌ No commits found")
+                return
+            
+            # Let user select commit to split
+            click.echo(f"\n📋 Found {len(commits)} recent commits")
+            
+            commit_choices = [c["display"] for c in commits]
+            commit_choices.append("Cancel")
+            
+            selected = questionary.select(
+                "Select a commit to split:",
+                choices=commit_choices
+            ).ask()
+            
+            if not selected or selected == "Cancel":
+                click.echo("❌ Cancelled")
+                return
+            
+            # Find selected commit
+            selected_commit = None
+            for commit in commits:
+                if commit["display"] == selected:
+                    selected_commit = commit
+                    break
+            
+            if not selected_commit:
+                click.echo("❌ Commit not found")
+                return
+            
+            click.echo(f"\n🔍 Analyzing commit: {selected_commit['hash']}")
+            
+            # Get commit diff
+            diff_result = subprocess.run(
+                ["git", "show", "--stat", selected_commit["hash"]],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+            
+            click.echo(f"\n� Commit Details:")
+            click.echo(f"   Hash: {selected_commit['hash']}")
+            click.echo(f"   Message: {selected_commit['message']}")
+            click.echo(f"   Files: {selected_commit['files_changed']}")
+            
+            # Reset to parent commit to "undo" the selected commit
+            click.echo(f"\n🔄 Resetting to parent commit...")
+            reset_result = subprocess.run(
+                ["git", "reset", "--soft", f"{selected_commit['hash']}^"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+            
+            if reset_result.returncode != 0:
+                click.echo(f"❌ Failed to reset: {reset_result.stderr}")
                 return
             
             # Initialize splitter
             splitter = CommitSplitter(str(repo_path))
             
             # Analyze staged changes
-            click.echo("\n🔍 Analyzing staged changes...")
+            click.echo("\n🔍 Analyzing changes...")
             analysis = splitter.analyze_staged_changes()
             
             if not analysis["files"]:
-                click.echo("❌ No files to commit")
+                click.echo("❌ No files to split")
                 return
             
             click.echo(f"\n📊 Analysis Results:")
@@ -1175,6 +1261,8 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
             # Confirm
             if not click.confirm(f"\n🔧 Split into {len(analysis['suggested_groups'])} commits?", default=True):
                 click.echo("❌ Cancelled")
+                # Restore original commit
+                subprocess.run(["git", "reset", "--hard", selected_commit["hash"]], cwd=repo_path)
                 return
             
             # Perform split
@@ -1187,18 +1275,20 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                     click.echo(f"   • {commit['hash'][:8]}: {commit['message']}")
                 
                 # Ask to push
-                if click.confirm("\n📤 Push commits to remote?", default=False):
-                    push_result = subprocess.run(
-                        ["git", "push"],
-                        cwd=repo_path,
-                        capture_output=True,
-                        text=True
-                    )
-                    
-                    if push_result.returncode == 0:
-                        click.echo("✅ Pushed successfully")
-                    else:
-                        click.echo(f"❌ Push failed: {push_result.stderr}")
+                if click.confirm("\n📤 Force push commits to remote?", default=False):
+                    click.echo("⚠️  This will rewrite history!")
+                    if click.confirm("Are you sure?", default=False):
+                        push_result = subprocess.run(
+                            ["git", "push", "--force"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            text=True
+                        )
+                        
+                        if push_result.returncode == 0:
+                            click.echo("✅ Pushed successfully")
+                        else:
+                            click.echo(f"❌ Push failed: {push_result.stderr}")
             else:
                 click.echo(f"\n❌ Split failed: {result.get('error', 'Unknown error')}")
         
