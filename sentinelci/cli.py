@@ -79,8 +79,8 @@ def main(
     """SCI - AI-powered security scanning for your code"""
     
     # Check for first-time installation
-    config = get_config()
-    is_first_run = not config.get_api_key() and not config.get_github_pat()
+    cfg = get_config()
+    is_first_run = not cfg.get_api_key() and not cfg.get_github_pat()
     
     # Show banner and onboarding on first run (unless running specific commands)
     if is_first_run and ctx.invoked_subcommand is None and not any([
