@@ -1254,17 +1254,15 @@ def _action_analyze_fix_pipelines(repo: Dict[str, Any]) -> None:
                 fixes_applied = 0
                 
                 for error in fixable_errors:
-                    result = fixer.apply_fix(fixed_content, error)
-                    if result.success:
-                        # Get the fixed content by re-applying fix
-                        if error.category.value == "WORKFLOW_PERMISSIONS":
-                            fixed_content, success = fixer.fix_permissions(fixed_content, error)
-                            if success:
-                                fixes_applied += 1
-                        elif error.category.value == "CODE_INJECTION":
-                            fixed_content, success = fixer.fix_code_injection(fixed_content, error)
-                            if success:
-                                fixes_applied += 1
+                    # Apply fix directly based on error category
+                    if error.category.value == "workflow_permissions":
+                        fixed_content, success = fixer.fix_permissions(fixed_content, error)
+                        if success:
+                            fixes_applied += 1
+                    elif error.category.value == "code_injection":
+                        fixed_content, success = fixer.fix_code_injection(fixed_content, error)
+                        if success:
+                            fixes_applied += 1
                 
                 if fixes_applied > 0:
                     fixed_workflows[workflow_path] = fixed_content
