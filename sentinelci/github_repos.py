@@ -187,7 +187,7 @@ class GitHubRepoManager:
     ) -> List[Dict[str, Any]]:
         """
         Interactive repository selection with lazy loading and background prefetching
-        Navigate with arrow keys: ← Previous, → Next, Esc to cancel
+        Navigate with j/k or arrow keys, Enter to select, Esc to cancel
 
         Args:
             multi_select: Allow multiple selection
@@ -201,8 +201,6 @@ class GitHubRepoManager:
         try:
             import questionary
             from questionary import Choice
-            from prompt_toolkit.keys import Keys
-            from prompt_toolkit.key_binding import KeyBindings
             import threading
         except ImportError:
             print("⚠️  questionary not installed. Install with: pip install questionary")
@@ -239,22 +237,6 @@ class GitHubRepoManager:
                     page_cache[page_num] = (repos, has_more)
             except Exception:
                 pass  # Silently fail prefetch
-        
-        # Create custom key bindings for arrow navigation
-        bindings = KeyBindings()
-        page_action = {"action": None}
-        
-        @bindings.add(Keys.Right)
-        def _(event):
-            """Navigate to next page"""
-            page_action["action"] = "next"
-            event.app.exit(result="__navigate__")
-        
-        @bindings.add(Keys.Left)
-        def _(event):
-            """Navigate to previous page"""
-            page_action["action"] = "prev"
-            event.app.exit(result="__navigate__")
         
         while True:
             # Check cache first
@@ -303,13 +285,13 @@ class GitHubRepoManager:
             
             nav_hint = []
             if current_page > 1:
-                nav_hint.append("← Prev")
+                nav_hint.append("'p' for prev")
             if has_more:
                 # Show if next page is prefetched
                 if (current_page + 1) in page_cache:
-                    nav_hint.append("→ Next (ready)")
+                    nav_hint.append("'n' for next (ready)")
                 else:
-                    nav_hint.append("→ Next (loading...)")
+                    nav_hint.append("'n' for next (loading...)")
             nav_hint.append("Esc to cancel")
             
             print(f"\n📚 Repositories (Page {current_page}) - {' | '.join(nav_hint)}")
@@ -330,45 +312,50 @@ class GitHubRepoManager:
                 )
 
                 choices.append(Choice(title=label, value=repo))
+            
+            # Add navigation choices
+            if current_page > 1:
+                choices.append(Choice(title="[p] ← Previous Page", value="__prev__"))
+            if has_more:
+                choices.append(Choice(title="[n] → Next Page", value="__next__"))
 
             try:
                 if multi_select:
                     selected = questionary.checkbox(
                         "Select repositories (Space to select, Enter to confirm):",
                         choices=choices,
-                        key_bindings=bindings
                     ).ask()
-                    
-                    if selected == "__navigate__":
-                        if page_action["action"] == "next" and has_more:
-                            current_page += 1
-                            continue
-                        elif page_action["action"] == "prev" and current_page > 1:
-                            current_page -= 1
-                            continue
                     
                     if not selected:
                         return []
                     
+                    # Filter out navigation items
+                    actual_repos = [s for s in selected if isinstance(s, dict)]
+                    nav_items = [s for s in selected if isinstance(s, str)]
+                    
+                    if "__prev__" in nav_items and current_page > 1:
+                        current_page -= 1
+                        continue
+                    elif "__next__" in nav_items and has_more:
+                        current_page += 1
+                        continue
+                    
                     # Return selected repos immediately
-                    return selected if isinstance(selected, list) else []
+                    return actual_repos if actual_repos else []
                 else:
                     selected = questionary.select(
                         "Select a repository:",
                         choices=choices,
-                        key_bindings=bindings
                     ).ask()
                     
                     # Handle navigation
-                    if selected == "__navigate__":
-                        if page_action["action"] == "next" and has_more:
-                            current_page += 1
-                            continue
-                        elif page_action["action"] == "prev" and current_page > 1:
-                            current_page -= 1
-                            continue
-                    
-                    if selected is None:
+                    if selected == "__prev__" and current_page > 1:
+                        current_page -= 1
+                        continue
+                    elif selected == "__next__" and has_more:
+                        current_page += 1
+                        continue
+                    elif selected is None:
                         return []
                     
                     # Return selected repo immediately (stop fetching)
