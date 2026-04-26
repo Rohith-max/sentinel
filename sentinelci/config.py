@@ -268,6 +268,7 @@ class Config:
             print("\nRun 'sci onboard' for interactive setup")
             print("Or run 'sci config' for basic configuration")
             print("Or set AI_API_KEY environment variable")
+            print("\n💡 Demo: Try 'sci scan --help' to see available options")
             return False
         return True
 

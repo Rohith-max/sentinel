@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sentinelci"
-version = "1.0.8"
+version = "1.0.9"
 description = "AI-powered security scanning and autonomous remediation platform"
 readme = "README.md"
 requires-python = ">=3.11"
