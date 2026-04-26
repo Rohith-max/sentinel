@@ -1268,11 +1268,10 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
             # Show suggested splits
             click.echo(f"\n💡 Suggested commit groups:")
             for i, group in enumerate(groups, 1):
-                click.echo(f"\n   Group {i}: {group.category.upper()}")
+                click.echo(f"\n   Group {i}: {group.name}")
                 click.echo(f"   Files: {len(group.files)}")
-                if group.feature:
-                    click.echo(f"   Feature: {group.feature}")
-                click.echo(f"   Message: {group.name}")
+                if group.description:
+                    click.echo(f"   Description: {group.description}")
             
             # Confirm
             if not click.confirm(f"\n🔧 Split into {len(groups)} commits?", default=True):
@@ -1322,6 +1321,8 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                             click.echo("✅ Pushed successfully")
                         else:
                             click.echo(f"❌ Push failed: {push_result.stderr}")
+                else:
+                    click.echo("💡 Commits created locally but not pushed")
             else:
                 click.echo(f"\n❌ Split failed: {result.get('error', 'Unknown error')}")
         
