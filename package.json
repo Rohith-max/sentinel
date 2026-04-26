@@ -1,11 +1,11 @@
 {
   "name": "sentinelci",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "AI-Powered Security Scanning and Autonomous Remediation Platform",
   "main": "index.js",
   "bin": {
-    "sci": "./bin/sci",
-    "sentinelci": "./bin/sentinelci"
+    "sci": "bin/sci",
+    "sentinelci": "bin/sentinelci"
   },
   "scripts": {
     "install": "node install.js",
@@ -30,7 +30,7 @@
   "homepage": "https://github.com/sentinelci/sentinelci",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sentinelci/sentinelci.git"
+    "url": "git+https://github.com/sentinelci/sentinelci.git"
   },
   "bugs": {
     "url": "https://github.com/sentinelci/sentinelci/issues"

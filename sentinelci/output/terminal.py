@@ -24,25 +24,25 @@ SEVERITY_COLORS = {
 def render_banner() -> None:
     """Render SentinelCI banner"""
     banner = """
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║ ███████╗███████╗███╗   ██╗████████╗██╗███╗   ██╗███████╗██╗  ║
-║ ██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║████╗  ██║██╔════╝██║  ║
-║ ███████╗█████╗  ██╔██╗ ██║   ██║   ██║██╔██╗ ██║█████╗  ██║  ║
-║ ╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██║╚██╗██║██╔══╝  ██║  ║
-║ ███████║███████╗██║ ╚████║   ██║   ██║██║ ╚████║███████╗███████╗
-║ ╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝
-║                                                               ║
-║             ██████╗██╗                                        ║
-║            ██╔════╝██║                                        ║
-║            ██║     ██║                                        ║
-║            ██║     ██║                                        ║
-║            ╚██████╗██║                                        ║
-║             ╚═════╝╚═╝                                        ║
-║                                                               ║
-║           AI-Powered Security Intelligence Platform          ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════╗
+║                                                                 ║
+║ ███████╗███████╗███╗   ██╗████████╗██╗███╗   ██╗███████╗██╗     ║ 
+║ ██╔════╝██╔════╝████╗  ██║╚══██╔══╝██║████╗  ██║██╔════╝██║     ║
+║ ███████╗█████╗  ██╔██╗ ██║   ██║   ██║██╔██╗ ██║█████╗  ██║     ║ 
+║ ╚════██║██╔══╝  ██║╚██╗██║   ██║   ██║██║╚██╗██║██╔══╝  ██║     ║
+║ ███████║███████╗██║ ╚████║   ██║   ██║██║ ╚████║███████╗███████ ║ 
+║ ╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═══╝╚══════╝╚══════ ║
+║                                                                 ║
+║                         ██████╗██╗                              ║
+║                        ██╔════╝██║                              ║
+║                        ██║     ██║                              ║
+║                        ██║     ██║                              ║
+║                        ╚██████╗██║                              ║
+║                         ╚═════╝╚═╝                              ║
+║                                                                 ║
+║           AI-Powered Security Intelligence Platform             ║
+║                                                                 ║
+╚═════════════════════════════════════════════════════════════════╝
     """
     console.print(banner, style="bold cyan")
     console.print()
@@ -110,7 +110,7 @@ def render_finding(finding: Dict[str, Any]) -> Panel:
 
     return Panel(
         content,
-        title=f"⚠️  {finding_type}",
+        title=f"WARNING: {finding_type}",
         border_style=border_color,
         expand=False,
     )
@@ -121,10 +121,10 @@ def render_findings(findings: List[Dict[str, Any]]) -> None:
     render_banner()
 
     if not findings:
-        console.print("[green]✅ No security threats detected![/green]")
+        console.print("[green]SUCCESS: No security threats detected![/green]")
         return
 
-    console.print(f"[yellow]⚠️  Found {len(findings)} security issue(s)[/yellow]\n")
+    console.print(f"[yellow]WARNING: Found {len(findings)} security issue(s)[/yellow]\n")
 
     # Group findings by severity
     by_severity = {}
@@ -167,24 +167,33 @@ def render_verdict(critical_count: int, high_count: int, halt_on_critical: bool)
     if critical_count > 0:
         if halt_on_critical:
             console.print(
-                "[bold red]❌ CRITICAL issues found - scan FAILED[/bold red]"
+                "[bold red]FAILED: CRITICAL issues found - scan FAILED[/bold red]"
             )
         else:
             console.print(
-                "[bold yellow]⚠️  CRITICAL issues detected but not blocking[/bold yellow]"
+                "[bold yellow]WARNING: CRITICAL issues detected but not blocking[/bold yellow]"
             )
     elif high_count > 0:
-        console.print("[bold yellow]⚠️  HIGH severity issues found - review recommended[/bold yellow]")
+        console.print("[bold yellow]WARNING: HIGH severity issues found - review recommended[/bold yellow]")
     else:
-        console.print("[bold green]✅ Scan passed - no critical issues[/bold green]")
+        console.print("[bold green]SUCCESS: Scan passed - no critical issues[/bold green]")
 
 
 def render_analysis(analysis_text: str) -> None:
-    """Render AI analysis"""
-    console.print("\n[bold cyan]📊 AI Analysis[/bold cyan]")
-    console.print(Panel(analysis_text, border_style="cyan"))
+    """Render AI analysis - brief format only"""
+    # Strip markdown formatting
+    clean_text = analysis_text.replace("###", "").replace("##", "").replace("**", "")
+    clean_text = clean_text.replace("```python", "").replace("```", "")
+    clean_text = clean_text.replace("*", "")
+    
+    # Limit to first 500 characters for brevity
+    if len(clean_text) > 500:
+        clean_text = clean_text[:500] + "... (analysis truncated for brevity)"
+    
+    console.print("\nAI Analysis (Brief):")
+    console.print(Panel(clean_text, border_style="cyan"))
 
 
 def render_error(message: str) -> None:
     """Render error message"""
-    console.print(f"[bold red]❌ Error: {message}[/bold red]")
+    console.print(f"[bold red]ERROR: {message}[/bold red]")

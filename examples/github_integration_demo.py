@@ -28,26 +28,26 @@ def demo_authentication():
             user = status["user"]
             orgs = status["organizations"]
             
-            print(f"✅ Authenticated as: {user['login']}")
+            print(f"SUCCESS: Authenticated as: {user['login']}")
             print(f"   Name: {user.get('name', 'N/A')}")
             print(f"   Email: {user.get('email', 'N/A')}")
             print(f"   Public Repos: {user.get('public_repos', 0)}")
             print(f"   Followers: {user.get('followers', 0)}")
             
             if orgs:
-                print(f"\n📋 Organizations ({len(orgs)}):")
+                print(f"\nOrganizations ({len(orgs)}):")
                 for org in orgs[:5]:
                     print(f"   • {org['login']}")
             
             return True
         else:
-            print(f"❌ Not authenticated: {status['error']}")
+            print(f"FAILED: Not authenticated: {status['error']}")
             print("\nTo setup authentication, run:")
             print("  sci github setup")
             return False
             
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         return False
 
 
@@ -60,14 +60,14 @@ def demo_repository_listing():
     try:
         manager = GitHubRepoManager()
         
-        print("🔍 Fetching repositories...")
+        print("LOADING: Fetching repositories...")
         repos = manager.fetch_all_repositories()
         
-        print(f"✅ Found {len(repos)} repositories\n")
+        print(f"SUCCESS: Found {len(repos)} repositories\n")
         
         print("Sample repositories:")
         for repo in repos[:5]:
-            print(f"\n  📦 {repo['full_name']}")
+            print(f"\n  REPO: {repo['full_name']}")
             print(f"     Visibility: {repo['visibility']}")
             print(f"     Language: {repo.get('language', 'N/A')}")
             print(f"     Stars: {repo['stars']}")
@@ -88,10 +88,10 @@ def demo_repository_listing():
         return repos
         
     except GitHubAuthError as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         return []
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         return []
 
 
@@ -104,7 +104,7 @@ def demo_security_analysis(repo_full_name: str):
     try:
         analyzer = GitHubSecurityAnalyzer()
         
-        print(f"🔍 Analyzing repository: {repo_full_name}\n")
+        print(f"ANALYZING: repository: {repo_full_name}\n")
         
         analysis = analyzer.analyze_repository(repo_full_name)
         risk_score = analyzer.calculate_risk_score(analysis)
@@ -114,10 +114,10 @@ def demo_security_analysis(repo_full_name: str):
         return True
         
     except GitHubAuthError as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         return False
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"ERROR: {str(e)}")
         return False
 
 
@@ -130,7 +130,7 @@ def main():
     authenticated = demo_authentication()
     
     if not authenticated:
-        print("\n⚠️  Authentication required to continue demos")
+        print("\nWARNING: Authentication required to continue demos")
         print("Run: sci github setup")
         return
     
@@ -151,7 +151,7 @@ def main():
                     print("Using first repository from list...")
                     demo_security_analysis(repos[0]['full_name'])
         except KeyboardInterrupt:
-            print("\n\n❌ Demo cancelled")
+            print("\n\nCANCELLED: Demo cancelled")
     
     print("\n" + "="*60)
     print("Demo Complete!")

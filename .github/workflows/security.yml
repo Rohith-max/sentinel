@@ -1,0 +1,159 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for secret scanning
+        
+    - name: Run TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+        
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit semgrep
+        pip install -e .
+        
+    - name: Run Safety (Python dependency scan)
+      run: |
+        safety check --json --output safety-report.json || true
+        
+    - name: Run Bandit (Python security scan)
+      run: |
+        bandit -r sentinelci/ -f json -o bandit-report.json || true
+        
+    - name: Run Semgrep
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json sentinelci/ || true
+        
+    - name: Self-scan with SentinelCI
+      run: |
+        sci scan --format json --output sentinelci-report.json || true
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          *-report.json
+          
+  npm-audit:
+    name: NPM Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Run NPM audit
+      run: |
+        npm audit --audit-level=moderate --json > npm-audit-report.json || true
+        
+    - name: Upload NPM audit report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: npm-audit-report
+        path: npm-audit-report.json
+        
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: python, javascript
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, dependency-scan, npm-audit]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Create security summary
+      run: |
+        echo "# 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if reports exist and summarize
+        if [ -f "security-reports/safety-report.json" ]; then
+          echo "- ✅ Python dependency scan completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "security-reports/bandit-report.json" ]; then
+          echo "- ✅ Python security scan completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "security-reports/sentinelci-report.json" ]; then
+          echo "- ✅ SentinelCI self-scan completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "npm-audit-report/npm-audit-report.json" ]; then
+          echo "- ✅ NPM audit completed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 Detailed reports available in workflow artifacts" >> $GITHUB_STEP_SUMMARY

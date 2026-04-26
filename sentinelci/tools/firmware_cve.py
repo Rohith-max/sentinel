@@ -136,6 +136,23 @@ def scan_firmware_cves(path: str = ".") -> List[CveFinding]:
     findings: List[CveFinding] = []
     binwalk_path = _resolve_executable("binwalk")
 
+    # Check if path contains firmware files
+    target = Path(path)
+    firmware_extensions = {".bin", ".img", ".rom", ".fw", ".firmware"}
+    has_firmware = False
+    
+    if target.is_file() and target.suffix.lower() in firmware_extensions:
+        has_firmware = True
+    elif target.is_dir():
+        for item in target.rglob("*"):
+            if item.is_file() and item.suffix.lower() in firmware_extensions:
+                has_firmware = True
+                break
+    
+    # Only show warning if we actually have firmware files to scan
+    if not has_firmware:
+        return findings
+
     try:
         if not binwalk_path:
             print("⚠️  binwalk CLI not found; firmware CVE scan skipped")

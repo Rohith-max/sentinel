@@ -1,0 +1,61 @@
+{
+  "plan": {
+    "repository": "Rohith-G611/rpg-maps",
+    "actions": [
+      {
+        "action_type": "open_issue",
+        "target": "Repository dependencies",
+        "description": "Track supply_chain vulnerability",
+        "changes": {
+          "issue_title": "Security: supply_chain in Repository dependencies"
+        },
+        "severity": "MEDIUM",
+        "auto_approve": true
+      },
+      {
+        "action_type": "open_issue",
+        "target": "Repository documentation",
+        "description": "Track supply_chain vulnerability",
+        "changes": {
+          "issue_title": "Security: supply_chain in Repository documentation"
+        },
+        "severity": "MEDIUM",
+        "auto_approve": true
+      },
+      {
+        "action_type": "log_warning",
+        "target": "Repository workflows",
+        "description": "Monitor supply_chain",
+        "changes": {},
+        "severity": "LOW",
+        "auto_approve": true
+      },
+      {
+        "action_type": "log_warning",
+        "target": "Repository artifacts",
+        "description": "Monitor supply_chain",
+        "changes": {},
+        "severity": "LOW",
+        "auto_approve": true
+      },
+      {
+        "action_type": "log_warning",
+        "target": "Repository workflows",
+        "description": "Monitor supply_chain",
+        "changes": {},
+        "severity": "LOW",
+        "auto_approve": true
+      }
+    ],
+    "risk_assessment": "MODERATE: Issues can be handled automatically",
+    "estimated_impact": "0 file(s) will be modified, 5 total actions",
+    "requires_approval": false
+  },
+  "results": {
+    "status": "success",
+    "actions_executed": 5,
+    "actions_failed": 0,
+    "changes": [],
+    "pr_created": null
+  }
+}

@@ -12,8 +12,38 @@ SentinelCI is an advanced security scanning platform that combines AI-powered an
 
 ### Installation
 
+**Python (Recommended):**
 ```bash
 pip install sentinelci
+```
+
+**NPM:**
+```bash
+npm install -g sentinelci
+```
+
+### Important: PATH Configuration
+
+After installing via pip, if the `sci` command is not found, you need to add Python's Scripts directory to your PATH:
+
+**Windows:**
+```powershell
+# The warning message will show you the exact path, typically:
+# C:\Users\YourName\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_xxx\LocalCache\local-packages\Python311\Scripts
+
+# Add to PATH temporarily (current session):
+$env:PATH += ";C:\Users\YourName\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_xxx\LocalCache\local-packages\Python311\Scripts"
+
+# Or add permanently via System Properties > Environment Variables
+```
+
+**macOS/Linux:**
+```bash
+# Add to ~/.bashrc or ~/.zshrc:
+export PATH="$HOME/.local/bin:$PATH"
+
+# Then reload:
+source ~/.bashrc  # or source ~/.zshrc
 ```
 
 ### Initial Setup

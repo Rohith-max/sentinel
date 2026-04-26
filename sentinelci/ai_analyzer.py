@@ -194,7 +194,7 @@ If no issues found, return empty array []."""
                     ))
 
         except Exception as e:
-            print(f"⚠️  Secrets analysis error: {str(e)}")
+            print(f"WARNING: Secrets analysis error: {str(e)}")
 
         return findings
 

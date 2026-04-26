@@ -2,7 +2,7 @@
 SCI - Security scanning CLI tool with AI-powered threat analysis
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.6"
 __author__ = "SCI Team"
 
 # Export main components

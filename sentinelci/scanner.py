@@ -12,6 +12,8 @@ from pathlib import Path
 from sentinelci.tools.secret_scanner import scan_secrets
 from sentinelci.tools.url_forensics import detect_homographs
 from sentinelci.tools.firmware_cve import scan_firmware_cves
+from sentinelci.tools.dependency_scanner import scan_dependencies
+from sentinelci.tools.workflow_scanner import scan_workflows
 from sentinelci.output.terminal import (
     render_findings,
     render_verdict,
@@ -205,6 +207,8 @@ async def _run_parallel_scans(
     scan_targets: List[str],
     enable_firmware: bool = True,
     enable_urls: bool = True,
+    enable_dependencies: bool = True,
+    enable_workflows: bool = True,
 ) -> List[Dict[str, Any]]:
     """Run enabled scans in parallel and normalize findings."""
     all_findings: List[Dict[str, Any]] = []
@@ -222,6 +226,20 @@ async def _run_parallel_scans(
         else:
             for target in scan_targets:
                 tasks.append(asyncio.to_thread(detect_homographs, target))
+
+    if enable_dependencies:
+        if len(scan_targets) == 1:
+            tasks.append(asyncio.to_thread(scan_dependencies, scan_targets[0]))
+        else:
+            for target in scan_targets:
+                tasks.append(asyncio.to_thread(scan_dependencies, target))
+
+    if enable_workflows:
+        if len(scan_targets) == 1:
+            tasks.append(asyncio.to_thread(scan_workflows, scan_targets[0]))
+        else:
+            for target in scan_targets:
+                tasks.append(asyncio.to_thread(scan_workflows, target))
 
     if enable_firmware:
         firmware_extensions = {".bin", ".img", ".rom", ".fw", ".firmware"}
@@ -323,6 +341,8 @@ def run_scan(
     halt_on_critical: bool = False,
     enable_firmware: bool = True,
     enable_urls: bool = True,
+    enable_dependencies: bool = True,
+    enable_workflows: bool = True,
 ) -> int:
     """
     Run security scan
@@ -343,6 +363,8 @@ def run_scan(
         halt_on_critical: Exit with error on critical findings
         enable_firmware: Enable CVE scanning
         enable_urls: Enable URL detection
+        enable_dependencies: Enable dependency vulnerability scanning
+        enable_workflows: Enable GitHub Actions workflow scanning
 
     Returns:
         Exit code (0 = success, 1 = critical findings, 2 = error)
@@ -365,6 +387,8 @@ def run_scan(
             halt_on_critical=halt_on_critical,
             enable_firmware=enable_firmware,
             enable_urls=enable_urls,
+            enable_dependencies=enable_dependencies,
+            enable_workflows=enable_workflows,
             interval_seconds=watch_interval,
         )
         return 0
@@ -380,6 +404,8 @@ def run_scan(
             github_pat=github_pat,
             enable_firmware=enable_firmware,
             enable_urls=enable_urls,
+            enable_dependencies=enable_dependencies,
+            enable_workflows=enable_workflows,
         )
     except Exception as e:
         print(f"❌ Scan failed: {str(e)}")
@@ -436,6 +462,8 @@ def collect_findings(
     github_pat: Optional[str] = None,
     enable_firmware: bool = True,
     enable_urls: bool = True,
+    enable_dependencies: bool = True,
+    enable_workflows: bool = True,
 ) -> List[Dict[str, Any]]:
     """Collect findings without rendering, useful for scan and fix flows."""
     if sync_github and _is_git_repo():
@@ -455,6 +483,10 @@ def collect_findings(
     # Show enabled scanners
     scanners = []
     scanners.append("secrets")
+    if enable_dependencies:
+        scanners.append("dependencies")
+    if enable_workflows:
+        scanners.append("workflows")
     if enable_urls:
         scanners.append("URLs")
     if enable_firmware:
@@ -468,6 +500,8 @@ def collect_findings(
             scan_targets,
             enable_firmware=enable_firmware,
             enable_urls=enable_urls,
+            enable_dependencies=enable_dependencies,
+            enable_workflows=enable_workflows,
         )
     )
     
@@ -495,6 +529,8 @@ def run_watch(
     halt_on_critical: bool = False,
     enable_firmware: bool = True,
     enable_urls: bool = True,
+    enable_dependencies: bool = True,
+    enable_workflows: bool = True,
     interval_seconds: float = 2.0,
 ) -> None:
     """Continuously monitor local changes and rerun scans in real time."""
@@ -514,6 +550,8 @@ def run_watch(
         halt_on_critical=halt_on_critical,
         enable_firmware=enable_firmware,
         enable_urls=enable_urls,
+        enable_dependencies=enable_dependencies,
+        enable_workflows=enable_workflows,
     )
 
     previous_snapshot = _snapshot_files(path)
@@ -548,6 +586,8 @@ def run_watch(
                 halt_on_critical=halt_on_critical,
                 enable_firmware=enable_firmware,
                 enable_urls=enable_urls,
+                enable_dependencies=enable_dependencies,
+                enable_workflows=enable_workflows,
             )
     except KeyboardInterrupt:
         print("\n⏹️  Watch mode stopped")

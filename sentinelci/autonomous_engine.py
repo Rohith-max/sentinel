@@ -306,16 +306,16 @@ class RuleEngine:
             parts.append(f"⏸️  REQUIRING manual approval because: {reason}")
             parts.append(f"This {finding.get('severity')} severity issue needs human review before proceeding.")
         elif primary_action == ActionType.WARN_ONLY:
-            parts.append(f"⚠️  WARNING: {reason}")
+            parts.append(f"WARNING: {reason}")
             parts.append(f"This {finding.get('severity')} severity issue should be reviewed but won't block execution.")
 
         # Secondary action explanation
         if secondary_action == ActionType.CREATE_PR:
             parts.append("📝 Will create a pull request with automated fix.")
         elif secondary_action == ActionType.SUGGEST_FIX:
-            parts.append("💡 Automated fix suggestion available.")
+            parts.append("SUGGESTION: Automated fix suggestion available.")
         elif secondary_action == ActionType.OPEN_ISSUE:
-            parts.append("📋 Will open a security issue for tracking.")
+            parts.append("TRACKING: Will open a security issue for tracking.")
 
         # Confidence note
         if confidence < 0.7:
@@ -376,7 +376,7 @@ permissions: write-all  # TOO BROAD"""
 
     def _generate_pr_content(self, finding: Dict[str, Any], fix: str) -> tuple[str, str]:
         """Generate PR title and body"""
-        title = f"🔒 Security Fix: {finding.get('title', 'Security Issue')}"
+        title = f"Security Fix: {finding.get('title', 'Security Issue')}"
 
         body = f"""## Security Issue
 
@@ -410,7 +410,7 @@ permissions: write-all  # TOO BROAD"""
 
     def _generate_issue_content(self, finding: Dict[str, Any]) -> tuple[str, str]:
         """Generate issue title and body"""
-        title = f"🔒 Security: {finding.get('title', 'Security Issue')}"
+        title = f"Security: {finding.get('title', 'Security Issue')}"
 
         body = f"""## Security Finding
 
@@ -535,7 +535,7 @@ class AutonomousEngine:
             parts.append(f"⏸️  Manual approval REQUIRED due to {high_count} HIGH severity issue(s).")
             parts.append("Security review needed before proceeding.")
         else:
-            parts.append("✅ No blocking issues detected.")
+            parts.append("SUCCESS: No blocking issues detected.")
             parts.append("Warnings and suggestions provided for review.")
 
         return " ".join(parts)

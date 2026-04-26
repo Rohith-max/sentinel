@@ -270,7 +270,7 @@ def scan(
         )
         sys.exit(exit_code)
     except Exception as e:
-        click.echo(f"❌ Scan failed: {str(e)}", err=True)
+        click.echo(f"FAILED: Scan failed: {str(e)}", err=True)
         sys.exit(1)
 
 
@@ -336,7 +336,7 @@ def watch(
         click.echo("\n⏹️  Watch mode stopped")
         sys.exit(0)
     except Exception as e:
-        click.echo(f"❌ Watch failed: {str(e)}", err=True)
+        click.echo(f"FAILED: Watch failed: {str(e)}", err=True)
         sys.exit(1)
 
 
@@ -390,7 +390,7 @@ def fix(
             for item in summary["changes"]:
                 click.echo(f"- {item['action']} -> {item['file']}:{item['line']}")
     except Exception as e:
-        click.echo(f"❌ Fix failed: {str(e)}", err=True)
+        click.echo(f"FAILED: Fix failed: {str(e)}", err=True)
         sys.exit(1)
 
 
@@ -412,9 +412,9 @@ def install(blocking: bool) -> None:
 
     try:
         install_hook(blocking=blocking)
-        click.echo("✅ Git hook installed successfully")
+        click.echo("SUCCESS: Git hook installed successfully")
     except Exception as e:
-        click.echo(f"❌ Failed to install hook: {str(e)}", err=True)
+        click.echo(f"FAILED: Failed to install hook: {str(e)}", err=True)
         sys.exit(1)
 
 
@@ -425,7 +425,7 @@ def remove() -> None:
 
     try:
         remove_hook()
-        click.echo("✅ Git hook removed")
+        click.echo("SUCCESS: Git hook removed")
     except Exception as e:
         click.echo(f"❌ Failed to remove hook: {str(e)}", err=True)
         sys.exit(1)
@@ -698,6 +698,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
         "Analyze Security Configuration",
         "Run AI Security Analysis",
         "Autonomous Agent (Full Automation)",
+        "Direct Fix (API - No Clone)",
         "Full Analysis + Simulation",
         "Clone and Scan Code",
         "Export Repository Info",
@@ -724,6 +725,8 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
                 _action_ai_analysis(repo)
             elif action == "Autonomous Agent (Full Automation)":
                 _action_simulate_decisions(repo)
+            elif action == "Direct Fix (API - No Clone)":
+                _action_direct_fix(repo)
             elif action == "Full Analysis + Simulation":
                 _action_full_analysis(repo)
             elif action == "Clone and Scan Code":
@@ -915,6 +918,184 @@ def _action_simulate_decisions(repo: Dict[str, Any]) -> None:
 
     except Exception as e:
         click.echo(f"ERROR: {str(e)}", err=True)
+        import traceback
+        traceback.print_exc()
+
+
+def _action_direct_fix(repo: Dict[str, Any]) -> None:
+    """Fix vulnerabilities directly via GitHub API"""
+    from sentinelci.config import get_config
+    from sentinelci.core.github_direct_fixer import GitHubDirectFixer
+    import requests
+
+    try:
+        config = get_config()
+        github_token = config.get_github_pat()
+        
+        if not github_token:
+            click.echo("❌ GitHub PAT not configured. Run: sci github setup")
+            return
+        
+        click.echo(f"\n🔍 Scanning repository: {repo['full_name']}")
+        
+        owner, repo_name = repo['full_name'].split("/")
+        
+        # Initialize fixer
+        fixer = GitHubDirectFixer(github_token)
+        
+        # Get repository default branch
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        
+        repo_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+        repo_response = requests.get(repo_url, headers=headers, timeout=30)
+        
+        if repo_response.status_code != 200:
+            click.echo(f"❌ Failed to access repository: {repo_response.status_code}")
+            return
+        
+        repo_data = repo_response.json()
+        default_branch = repo_data.get("default_branch", "main")
+        
+        # Check if repository is empty
+        if repo_data.get("size", 0) == 0:
+            click.echo("❌ Repository is empty - no files to scan")
+            return
+        
+        # Get repository files to scan
+        click.echo(f"📥 Fetching repository files from branch '{default_branch}'...")
+        
+        # Get repository tree
+        tree_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/trees/{default_branch}?recursive=1"
+        response = requests.get(tree_url, headers=headers, timeout=30)
+        
+        if response.status_code == 409:
+            click.echo(f"❌ Repository is empty or has no commits")
+            return
+        elif response.status_code == 404:
+            click.echo(f"❌ Branch '{default_branch}' not found")
+            return
+        elif response.status_code != 200:
+            click.echo(f"❌ Failed to fetch repository: {response.status_code} - {response.text}")
+            return
+        
+        tree_data = response.json()
+        files = [item for item in tree_data.get("tree", []) if item["type"] == "blob"]
+        
+        if not files:
+            click.echo("❌ No files found in repository")
+            return
+        
+        # Filter scannable files
+        scannable_extensions = {".py", ".js", ".ts", ".jsx", ".tsx", ".yml", ".yaml", ".json", ".env"}
+        scannable_files = [
+            f for f in files 
+            if any(f["path"].endswith(ext) for ext in scannable_extensions)
+            and not any(skip in f["path"] for skip in ["node_modules", ".git", "__pycache__", ".venv"])
+        ]
+        
+        if not scannable_files:
+            click.echo("❌ No scannable files found")
+            return
+        
+        click.echo(f"📄 Found {len(scannable_files)} files to scan")
+        
+        # Scan files for vulnerabilities
+        click.echo(f"\n🔍 Scanning for vulnerabilities...")
+        all_findings = []
+        
+        for file_info in scannable_files[:50]:  # Limit to 50 files for API rate limits
+            file_path = file_info["path"]
+            
+            # Get file content
+            github_file = fixer.get_file_content(owner, repo_name, file_path, default_branch)
+            if not github_file:
+                continue
+            
+            # Scan for secrets
+            secrets = fixer.extract_secrets_from_content(github_file.content, file_path)
+            
+            for secret in secrets:
+                all_findings.append({
+                    "type": "Hardcoded Secret",
+                    "severity": "HIGH",
+                    "file": file_path,
+                    "line_number": secret["line"],
+                    "description": f"Hardcoded {secret['type']} found",
+                })
+            
+            # Check workflows for issues
+            if file_path.endswith((".yml", ".yaml")) and ".github/workflows" in file_path:
+                content = github_file.content
+                
+                # Check for write-all permissions
+                if "write-all" in content:
+                    all_findings.append({
+                        "type": "Excessive Permissions",
+                        "severity": "HIGH",
+                        "file": file_path,
+                        "line_number": 0,
+                        "description": "Workflow has write-all permissions",
+                    })
+                
+                # Check for unpinned actions
+                if "@main" in content or "@master" in content:
+                    all_findings.append({
+                        "type": "Unpinned Action",
+                        "severity": "MEDIUM",
+                        "file": file_path,
+                        "line_number": 0,
+                        "description": "Action pinned to branch instead of commit SHA",
+                    })
+        
+        if not all_findings:
+            click.echo("\n✅ No vulnerabilities found!")
+            return
+        
+        click.echo(f"\n⚠️  Found {len(all_findings)} issue(s)")
+        
+        # Show summary
+        severity_counts = {}
+        for finding in all_findings:
+            sev = finding.get("severity", "UNKNOWN")
+            severity_counts[sev] = severity_counts.get(sev, 0) + 1
+        
+        for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+            if sev in severity_counts:
+                click.echo(f"  {sev}: {severity_counts[sev]}")
+        
+        # Confirm
+        if not click.confirm("\n🔧 Apply fixes directly to GitHub?", default=True):
+            click.echo("❌ Cancelled")
+            return
+        
+        # Fix
+        click.echo(f"\n🔧 Applying fixes via GitHub API...")
+        result = fixer.analyze_and_fix_repository(
+            owner=owner,
+            repo=repo_name,
+            findings=all_findings,
+            base_branch=default_branch,
+            auto_commit=True
+        )
+        
+        if result["success"]:
+            click.echo(f"\n✅ Fixed {len(result['fixed_files'])} file(s)")
+            click.echo(f"   Branch: {result['branch']}")
+            
+            if result.get("pr_url"):
+                click.echo(f"   PR: {result['pr_url']}")
+            
+            if result.get("env_vars", 0) > 0:
+                click.echo(f"\n⚠️  {result['env_vars']} environment variable(s) extracted")
+                click.echo(f"   Add these to GitHub Secrets")
+        else:
+            click.echo(f"\n❌ Fix failed: {result.get('error', 'Unknown error')}")
+
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
         import traceback
         traceback.print_exc()
 
@@ -1203,6 +1384,149 @@ def analyze(repository: str, output: str) -> None:
         click.echo(f"❌ Error: {str(e)}", err=True)
         click.echo("\nRun 'sci github setup' to configure GitHub PAT")
         sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        sys.exit(1)
+
+
+@github.command()
+@click.argument("repository")
+@click.option("--branch", default="main", help="Base branch to create PR against")
+@click.option("--dry-run", is_flag=True, help="Preview changes without committing")
+@click.option("--severity", default="medium", help="Minimum severity to fix")
+def direct_fix(repository: str, branch: str, dry_run: bool, severity: str) -> None:
+    """Fix vulnerabilities directly in GitHub repository via API"""
+    from sentinelci.config import get_config
+    from sentinelci.github_security import GitHubSecurityAnalyzer, GitHubAuthError
+    from sentinelci.scanner import collect_findings
+    from sentinelci.core.github_direct_fixer import fix_github_repository_direct
+    import tempfile
+    import os
+    import subprocess
+
+    try:
+        config = get_config()
+        github_token = config.get_github_pat()
+        
+        if not github_token:
+            click.echo("❌ GitHub PAT not configured. Run: sci github setup")
+            sys.exit(1)
+        
+        click.echo(f"🔍 Scanning repository: {repository}\n")
+        
+        # Parse owner/repo
+        try:
+            owner, repo = repository.split("/")
+        except ValueError:
+            click.echo("❌ Invalid repository format. Use: owner/repo")
+            sys.exit(1)
+        
+        # Clone repository temporarily to scan
+        with tempfile.TemporaryDirectory() as tmpdir:
+            clone_url = f"https://x-access-token:{github_token}@github.com/{repository}.git"
+            
+            click.echo(f"📥 Cloning repository...")
+            result = subprocess.run(
+                ["git", "clone", "--depth", "1", "--branch", branch, clone_url, tmpdir],
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if result.returncode != 0:
+                click.echo(f"❌ Failed to clone repository: {result.stderr}")
+                sys.exit(1)
+            
+            # Scan for vulnerabilities
+            click.echo(f"\n🔍 Scanning for vulnerabilities...")
+            findings = collect_findings(
+                path=tmpdir,
+                severity=severity,
+                enable_firmware=False,
+                enable_urls=True,
+                enable_dependencies=True,
+                enable_workflows=True,
+            )
+            
+            if not findings:
+                click.echo("\n✅ No vulnerabilities found!")
+                return
+            
+            click.echo(f"\n⚠️  Found {len(findings)} issue(s)")
+            
+            # Show findings summary
+            severity_counts = {}
+            for finding in findings:
+                sev = finding.get("severity", "UNKNOWN")
+                severity_counts[sev] = severity_counts.get(sev, 0) + 1
+            
+            for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                if sev in severity_counts:
+                    click.echo(f"  {sev}: {severity_counts[sev]}")
+            
+            if dry_run:
+                click.echo("\n🔍 Dry run mode - no changes will be made")
+                return
+            
+            # Confirm before fixing
+            if not click.confirm("\n🔧 Apply fixes directly to GitHub?", default=True):
+                click.echo("❌ Cancelled")
+                return
+            
+            # Fix directly in GitHub
+            click.echo(f"\n🔧 Applying fixes directly to GitHub...")
+            result = fix_github_repository_direct(
+                owner=owner,
+                repo=repo,
+                findings=findings,
+                github_token=github_token,
+                base_branch=branch,
+                auto_commit=True
+            )
+            
+            if result["success"]:
+                click.echo(f"\n✅ Successfully fixed {len(result['fixed_files'])} file(s)")
+                click.echo(f"   Branch: {result['branch']}")
+                
+                if result.get("pr_url"):
+                    click.echo(f"   PR: {result['pr_url']}")
+                
+                if result.get("env_vars", 0) > 0:
+                    click.echo(f"\n⚠️  {result['env_vars']} environment variable(s) extracted")
+                    click.echo(f"   Add these to GitHub Secrets or your environment")
+            else:
+                click.echo(f"\n❌ Fix failed: {result.get('error', 'Unknown error')}")
+                sys.exit(1)
+
+    except GitHubAuthError as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        click.echo("\nRun 'sci github setup' to configure GitHub PAT")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        sys.exit(1)
+
+
+@main.command()
+@click.option("--dry-run", is_flag=True, help="Preview split without creating commits")
+def split_commit(dry_run: bool) -> None:
+    """Split large staged commit into logical chunks"""
+    from sentinelci.core.commit_splitter import split_commits
+    
+    try:
+        result = split_commits(".", dry_run)
+        
+        if not result["success"]:
+            click.echo(f"❌ {result['error']}")
+            sys.exit(1)
+        
+        if dry_run:
+            click.echo(f"\n✅ Would create {result['groups']} commits")
+            click.echo("Run without --dry-run to apply")
+        else:
+            click.echo(f"\n✅ Created {len(result['commits'])} commits")
+            click.echo(f"📦 Split into {result['groups']} logical groups")
+    
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
         sys.exit(1)

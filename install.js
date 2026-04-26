@@ -37,8 +37,15 @@ async function install() {
     if (installResult.status !== 0) {
       console.error('❌ Failed to install SentinelCI Python package.');
       console.error('');
+      console.error('This might be because:');
+      console.error('1. The package is not yet available on PyPI');
+      console.error('2. Network connectivity issues');
+      console.error('3. Python/pip configuration issues');
+      console.error('');
       console.error('Please try manually:');
       console.error('  pip install sentinelci');
+      console.error('');
+      console.error('If the package is not available on PyPI yet, please wait for publication.');
       process.exit(1);
     }
 

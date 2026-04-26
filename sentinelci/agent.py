@@ -8,20 +8,17 @@ from groq import Groq
 
 
 # System prompt for security analysis
-SYSTEM_PROMPT = """You are SCI, an expert security analyst. Your role is to analyze security threats detected in code and provide clear, actionable remediation advice.
+SYSTEM_PROMPT = """You are SCI, a security analyst. Provide BRIEF, actionable advice only.
 
-You have access to tools that allow you to:
-1. Analyze threats and assess their risk
-2. Suggest remediation steps
+Rules:
+1. NO markdown formatting (no **, ##, ###, ```)
+2. Maximum 3 sentences per finding
+3. Focus on: What's wrong, How to fix it
+4. No code examples unless critical
+5. Be direct and concise
 
-When given a list of security findings, you should:
-1. Analyze each threat with context
-2. Provide risk assessment based on type and location
-3. Suggest practical remediation steps
-4. Prioritize critical findings
-5. Provide code examples when possible
-
-Be concise but thorough. Focus on actionable advice that developers can immediately implement."""
+Format: "Issue: [description]. Fix: [solution]. Priority: [level]."
+"""
 
 
 def _handle_suggest_remediation(threat_type: str, component: str, details: str) -> str:
@@ -129,11 +126,11 @@ async def analyze_findings(findings: list, use_streaming: bool = False) -> str:
 
     # Format findings for Claude
     findings_text = json.dumps(findings, indent=2)
-    user_message = f"""Please analyze these security findings and provide recommendations:
+    user_message = f"""Analyze these security findings. Be BRIEF (max 3 sentences per finding). NO markdown formatting.
 
 {findings_text}
 
-For each finding, analyze the threat and suggest remediation steps."""
+For each: What's wrong, how to fix it, priority level."""
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -143,9 +140,9 @@ For each finding, analyze the threat and suggest remediation steps."""
     def _request_analysis() -> str:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            max_tokens=2048,
+            max_tokens=500,  # Reduced for brevity
             messages=messages,
-            temperature=0.2,
+            temperature=0.1,  # More deterministic
         )
         return response.choices[0].message.content or ""
 
