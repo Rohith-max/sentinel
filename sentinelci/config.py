@@ -59,7 +59,15 @@ class Config:
         }
 
     def _load_dotenv_files(self) -> None:
-        """Load key=value pairs from local .env files into process environment."""
+        """Load key=value pairs from local .env files into process environment.
+        
+        Note: For package installations, tokens are collected during onboarding
+        and stored in config files. This method is kept for development/testing.
+        """
+        # Skip .env loading for package installations - tokens are in config
+        if not os.path.exists("pyproject.toml") and not os.path.exists("setup.py"):
+            return
+            
         candidates = [Path.cwd() / ".env", Path.cwd() / ".env.local"]
 
         for env_path in candidates:
@@ -110,57 +118,64 @@ class Config:
 
     def get_api_key(self) -> Optional[str]:
         """Get AI API key from config or environment"""
-        # Check environment variables first.
-        if api_key := os.environ.get("AI_API_KEY"):
-            return api_key
-        if api_key := os.environ.get("GROQ_API_KEY"):
-            return api_key
-
-        # Check config file with backwards compatibility.
+        # For package installations, prioritize config file over environment
         api_key = self.get("api", "ai_api_key")
         if api_key:
             return api_key
 
+        # Check config file with backwards compatibility.
         api_key = self.get("api", "anthropic_api_key")
         if api_key:
+            return api_key
+
+        # Fallback to environment variables (for development/testing)
+        if api_key := os.environ.get("AI_API_KEY"):
+            return api_key
+        if api_key := os.environ.get("GROQ_API_KEY"):
             return api_key
 
         return None
 
     def get_github_pat(self) -> Optional[str]:
         """Get GitHub PAT from config or environment."""
-        for env_key in ("GITHUB_PAT", "GH_PAT", "GITHUB_TOKEN"):
-            if token := os.environ.get(env_key):
-                return token
-
+        # For package installations, prioritize config file over environment
         token = self.get("git", "github_pat")
         if token:
             return token
+
+        # Fallback to environment variables (for development/testing)
+        for env_key in ("GITHUB_PAT", "GH_PAT", "GITHUB_TOKEN"):
+            if token := os.environ.get(env_key):
+                return token
 
         return None
 
     def get_nvd_api_key(self) -> Optional[str]:
         """Get NVD API key from config or environment."""
-        for env_key in ("NVD_API_KEY", "NIST_NVD_API_KEY"):
-            if key := os.environ.get(env_key):
-                return key
-
+        # For package installations, prioritize config file over environment
         key = self.get("api", "nvd_api_key")
         if key:
             return key
+
+        # Fallback to environment variables (for development/testing)
+        for env_key in ("NVD_API_KEY", "NIST_NVD_API_KEY"):
+            if key := os.environ.get(env_key):
+                return key
 
         return None
 
     def setup_wizard(self) -> None:
         """Interactive setup wizard for initial configuration"""
         print("\n🔧 SCI Configuration Wizard\n")
+        print("Note: For package installations, run 'sci onboard' for full interactive setup.")
+        print("This wizard provides basic configuration only.\n")
 
         # API Key setup
         current_key = self.get_api_key()
         if current_key:
-            prompt = f"Ai Api (current: {current_key[:10]}...): "
+            prompt = f"AI API Key (current: {current_key[:10]}...): "
         else:
-            prompt = "Ai Api (required): "
+            prompt = "AI API Key (required): "
 
         api_key = input(prompt).strip()
         if api_key:
@@ -209,7 +224,8 @@ class Config:
             self.set("scan", "enable_url_detection", "false")
             print("✓ URL detection disabled")
 
-        print(f"\n✅ Configuration saved to {self.config_file}\n")
+        print(f"\n✅ Configuration saved to {self.config_file}")
+        print("💡 For full interactive setup, run: sci onboard\n")
 
     def configure_onboarding(
         self,
@@ -249,8 +265,9 @@ class Config:
         """Validate that required configuration is present"""
         if not self.get_api_key():
             print("❌ Error: AI API key not configured")
-            print("\nRun 'sci config' to set up your API key")
-            print("Or set AI_API_KEY (or GROQ_API_KEY) environment variable")
+            print("\nRun 'sci onboard' for interactive setup")
+            print("Or run 'sci config' for basic configuration")
+            print("Or set AI_API_KEY environment variable")
             return False
         return True
 
