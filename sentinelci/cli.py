@@ -699,6 +699,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
         "Run AI Security Analysis",
         "Autonomous Agent (Full Automation)",
         "Direct Fix (API - No Clone)",
+        "Split Commits (Smart Chunking)",
         "Full Analysis + Simulation",
         "Clone and Scan Code",
         "Export Repository Info",
@@ -727,6 +728,8 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
                 _action_simulate_decisions(repo)
             elif action == "Direct Fix (API - No Clone)":
                 _action_direct_fix(repo)
+            elif action == "Split Commits (Smart Chunking)":
+                _action_split_commits(repo)
             elif action == "Full Analysis + Simulation":
                 _action_full_analysis(repo)
             elif action == "Clone and Scan Code":
@@ -1094,6 +1097,121 @@ def _action_direct_fix(repo: Dict[str, Any]) -> None:
         else:
             click.echo(f"\n❌ Fix failed: {result.get('error', 'Unknown error')}")
 
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        import traceback
+        traceback.print_exc()
+
+
+def _action_split_commits(repo: Dict[str, Any]) -> None:
+    """Clone repository and split large commits intelligently"""
+    from sentinelci.core.commit_splitter import CommitSplitter
+    import tempfile
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    try:
+        click.echo(f"\n📦 Cloning repository: {repo['full_name']}")
+        
+        # Create temporary directory
+        temp_dir = tempfile.mkdtemp(prefix="sci_split_")
+        repo_path = Path(temp_dir) / repo['name']
+        
+        try:
+            # Clone repository
+            clone_url = repo['clone_url']
+            result = subprocess.run(
+                ["git", "clone", clone_url, str(repo_path)],
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            if result.returncode != 0:
+                click.echo(f"❌ Failed to clone: {result.stderr}")
+                return
+            
+            click.echo(f"✅ Repository cloned to {repo_path}")
+            
+            # Check for staged changes
+            status_result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+            
+            if not status_result.stdout.strip():
+                click.echo("\n⚠️  No staged changes found")
+                click.echo("💡 Make some changes and stage them with 'git add' first")
+                return
+            
+            # Initialize splitter
+            splitter = CommitSplitter(str(repo_path))
+            
+            # Analyze staged changes
+            click.echo("\n🔍 Analyzing staged changes...")
+            analysis = splitter.analyze_staged_changes()
+            
+            if not analysis["files"]:
+                click.echo("❌ No files to commit")
+                return
+            
+            click.echo(f"\n📊 Analysis Results:")
+            click.echo(f"   Files: {analysis['total_files']}")
+            click.echo(f"   Additions: +{analysis['total_additions']}")
+            click.echo(f"   Deletions: -{analysis['total_deletions']}")
+            
+            # Show suggested splits
+            click.echo(f"\n💡 Suggested commit groups:")
+            for i, group in enumerate(analysis["suggested_groups"], 1):
+                click.echo(f"\n   Group {i}: {group['category'].upper()}")
+                click.echo(f"   Files: {len(group['files'])}")
+                if group.get("feature"):
+                    click.echo(f"   Feature: {group['feature']}")
+                click.echo(f"   Message: {group['message']}")
+            
+            # Confirm
+            if not click.confirm(f"\n🔧 Split into {len(analysis['suggested_groups'])} commits?", default=True):
+                click.echo("❌ Cancelled")
+                return
+            
+            # Perform split
+            click.echo(f"\n🔧 Creating commits...")
+            result = splitter.split_commit(dry_run=False)
+            
+            if result["success"]:
+                click.echo(f"\n✅ Created {len(result['commits'])} commit(s):")
+                for commit in result["commits"]:
+                    click.echo(f"   • {commit['hash'][:8]}: {commit['message']}")
+                
+                # Ask to push
+                if click.confirm("\n📤 Push commits to remote?", default=False):
+                    push_result = subprocess.run(
+                        ["git", "push"],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    if push_result.returncode == 0:
+                        click.echo("✅ Pushed successfully")
+                    else:
+                        click.echo(f"❌ Push failed: {push_result.stderr}")
+            else:
+                click.echo(f"\n❌ Split failed: {result.get('error', 'Unknown error')}")
+        
+        finally:
+            # Cleanup
+            if click.confirm("\n🗑️  Delete cloned repository?", default=True):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                click.echo("✅ Cleaned up")
+            else:
+                click.echo(f"📁 Repository kept at: {repo_path}")
+
+    except subprocess.TimeoutExpired:
+        click.echo("❌ Operation timed out")
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
         import traceback
