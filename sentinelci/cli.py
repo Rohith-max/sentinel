@@ -1106,6 +1106,7 @@ def _action_direct_fix(repo: Dict[str, Any]) -> None:
 def _action_split_commits(repo: Dict[str, Any]) -> None:
     """Clone repository and split large commits intelligently"""
     from sentinelci.core.commit_splitter import CommitSplitter
+    from sentinelci.core.pipeline_optimizer import PipelineOptimizer
     import tempfile
     import shutil
     import subprocess
@@ -1291,6 +1292,10 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
             
             if result["success"]:
                 click.echo(f"\n✅ Created {len(result['commits'])} commit(s):")
+                
+                # Collect commit info for pipeline optimization
+                commit_analyses = []
+                
                 for commit_sha in result["commits"]:
                     # Get commit message
                     msg_result = subprocess.run(
@@ -1302,7 +1307,57 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                         errors="replace"
                     )
                     message = msg_result.stdout.strip()
+                    
+                    # Get changed files in this commit
+                    files_result = subprocess.run(
+                        ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", commit_sha],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace"
+                    )
+                    changed_files = files_result.stdout.strip().split("\n")
+                    
                     click.echo(f"   • {commit_sha[:8]}: {message}")
+                    
+                    # Analyze for pipeline optimization
+                    optimizer = PipelineOptimizer()
+                    analysis = optimizer.analyze_commit(message, changed_files)
+                    commit_analyses.append(analysis)
+                
+                # Generate pipeline optimization
+                click.echo("\n🚀 Analyzing pipeline optimization opportunities...")
+                optimizer = PipelineOptimizer()
+                optimization = optimizer.optimize_pipeline(commit_analyses)
+                
+                # Show optimization report
+                report = optimizer.generate_optimization_report(optimization)
+                click.echo(f"\n{report}")
+                
+                # Offer to generate optimized workflow
+                if click.confirm("\n📝 Generate optimized GitHub Actions workflow?", default=False):
+                    workflow_content = optimizer.generate_optimized_workflow(optimization)
+                    workflow_path = repo_path / ".github" / "workflows" / "optimized-ci.yml"
+                    workflow_path.parent.mkdir(parents=True, exist_ok=True)
+                    workflow_path.write_text(workflow_content)
+                    
+                    click.echo(f"✅ Workflow saved to: .github/workflows/optimized-ci.yml")
+                    
+                    # Stage and commit the workflow
+                    subprocess.run(
+                        ["git", "add", ".github/workflows/optimized-ci.yml"],
+                        cwd=repo_path,
+                        encoding="utf-8",
+                        errors="replace"
+                    )
+                    subprocess.run(
+                        ["git", "commit", "-m", "ci: Add optimized pipeline workflow"],
+                        cwd=repo_path,
+                        encoding="utf-8",
+                        errors="replace"
+                    )
+                    click.echo("✅ Workflow committed")
                 
                 # Ask to push
                 if click.confirm("\n📤 Force push commits to remote?", default=False):
