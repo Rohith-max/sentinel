@@ -1248,41 +1248,62 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
             
             # Analyze staged changes
             click.echo("\n🔍 Analyzing changes...")
-            analysis = splitter.analyze_staged_changes()
+            changes = splitter.analyze_staged_changes()
             
-            if not analysis["files"]:
+            if not changes:
                 click.echo("❌ No files to split")
                 return
             
+            # Categorize changes
+            groups = splitter.categorize_changes(changes)
+            
             click.echo(f"\n📊 Analysis Results:")
-            click.echo(f"   Files: {analysis['total_files']}")
-            click.echo(f"   Additions: +{analysis['total_additions']}")
-            click.echo(f"   Deletions: -{analysis['total_deletions']}")
+            click.echo(f"   Files: {len(changes)}")
+            
+            total_additions = sum(c.additions for c in changes)
+            total_deletions = sum(c.deletions for c in changes)
+            click.echo(f"   Additions: +{total_additions}")
+            click.echo(f"   Deletions: -{total_deletions}")
             
             # Show suggested splits
             click.echo(f"\n💡 Suggested commit groups:")
-            for i, group in enumerate(analysis["suggested_groups"], 1):
-                click.echo(f"\n   Group {i}: {group['category'].upper()}")
-                click.echo(f"   Files: {len(group['files'])}")
-                if group.get("feature"):
-                    click.echo(f"   Feature: {group['feature']}")
-                click.echo(f"   Message: {group['message']}")
+            for i, group in enumerate(groups, 1):
+                click.echo(f"\n   Group {i}: {group.category.upper()}")
+                click.echo(f"   Files: {len(group.files)}")
+                if group.feature:
+                    click.echo(f"   Feature: {group.feature}")
+                click.echo(f"   Message: {group.name}")
             
             # Confirm
-            if not click.confirm(f"\n🔧 Split into {len(analysis['suggested_groups'])} commits?", default=True):
+            if not click.confirm(f"\n🔧 Split into {len(groups)} commits?", default=True):
                 click.echo("❌ Cancelled")
                 # Restore original commit
-                subprocess.run(["git", "reset", "--hard", selected_commit["hash"]], cwd=repo_path)
+                subprocess.run(
+                    ["git", "reset", "--hard", selected_commit["hash"]], 
+                    cwd=repo_path,
+                    encoding="utf-8",
+                    errors="replace"
+                )
                 return
             
             # Perform split
             click.echo(f"\n🔧 Creating commits...")
-            result = splitter.split_commit(dry_run=False)
+            result = splitter.split_current_commit(dry_run=False)
             
             if result["success"]:
                 click.echo(f"\n✅ Created {len(result['commits'])} commit(s):")
-                for commit in result["commits"]:
-                    click.echo(f"   • {commit['hash'][:8]}: {commit['message']}")
+                for commit_sha in result["commits"]:
+                    # Get commit message
+                    msg_result = subprocess.run(
+                        ["git", "log", "-1", "--format=%s", commit_sha],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace"
+                    )
+                    message = msg_result.stdout.strip()
+                    click.echo(f"   • {commit_sha[:8]}: {message}")
                 
                 # Ask to push
                 if click.confirm("\n📤 Force push commits to remote?", default=False):
