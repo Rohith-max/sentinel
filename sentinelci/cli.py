@@ -1185,7 +1185,7 @@ def _action_analyze_fix_pipelines(repo: Dict[str, Any]) -> None:
                 continue
             
             # Detect issues
-            issues = detector.detect_all_issues(workflow_data, workflow_path)
+            issues = detector.analyze_workflow(workflow_path, content)
             
             if issues:
                 click.echo(f"   ⚠️  Found {len(issues)} issue(s)")
@@ -1197,15 +1197,16 @@ def _action_analyze_fix_pipelines(repo: Dict[str, Any]) -> None:
                         "LOW": "white"
                     }.get(issue.severity, "white")
                     
-                    click.echo(f"      • [{issue.severity}] {issue.issue_type}: {issue.description}")
+                    click.echo(f"      • [{issue.severity}] {issue.category.value}: {issue.description}")
                     all_issues.append({
                         "workflow": workflow_path,
-                        "type": issue.issue_type,
+                        "type": issue.category.value,
                         "severity": issue.severity,
                         "description": issue.description,
                         "line": issue.line_number,
                         "fixable": issue.auto_fixable,
-                        "fix_suggestion": issue.fix_suggestion
+                        "fix_suggestion": issue.recommended_fix,
+                        "current_value": issue.current_value
                     })
             else:
                 click.echo(f"   ✅ No issues found")
@@ -1255,14 +1256,35 @@ def _action_analyze_fix_pipelines(repo: Dict[str, Any]) -> None:
             click.echo(f"\n   Fixing: {workflow_path}")
             
             try:
-                workflow_data = yaml.safe_load(content)
-                fixed_data = fixer.fix_all_issues(workflow_data, workflow_issues)
+                # Re-analyze to get PipelineError objects
+                errors = detector.analyze_workflow(workflow_path, content)
+                fixable_errors = [e for e in errors if e.auto_fixable]
                 
-                # Convert back to YAML
-                fixed_content = yaml.dump(fixed_data, default_flow_style=False, sort_keys=False)
-                fixed_workflows[workflow_path] = fixed_content
+                if not fixable_errors:
+                    continue
                 
-                click.echo(f"   ✅ Fixed {len(workflow_issues)} issue(s)")
+                # Apply fixes one by one
+                fixed_content = content
+                fixes_applied = 0
+                
+                for error in fixable_errors:
+                    result = fixer.apply_fix(fixed_content, error)
+                    if result.success:
+                        # Get the fixed content by re-applying fix
+                        if error.category.value == "WORKFLOW_PERMISSIONS":
+                            fixed_content, success = fixer.fix_permissions(fixed_content, error)
+                            if success:
+                                fixes_applied += 1
+                        elif error.category.value == "CODE_INJECTION":
+                            fixed_content, success = fixer.fix_code_injection(fixed_content, error)
+                            if success:
+                                fixes_applied += 1
+                
+                if fixes_applied > 0:
+                    fixed_workflows[workflow_path] = fixed_content
+                    click.echo(f"   ✅ Fixed {fixes_applied} issue(s)")
+                else:
+                    click.echo(f"   ⚠️  No fixes could be applied")
                 
             except Exception as e:
                 click.echo(f"   ❌ Fix failed: {str(e)}")
