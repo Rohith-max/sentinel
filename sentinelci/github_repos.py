@@ -186,7 +186,7 @@ class GitHubRepoManager:
         language: str = None,
     ) -> List[Dict[str, Any]]:
         """
-        Interactive repository selection with lazy loading (fetch page by page)
+        Interactive repository selection with lazy loading and background prefetching
         Navigate with arrow keys: ← Previous, → Next, Esc to cancel
 
         Args:
@@ -203,12 +203,42 @@ class GitHubRepoManager:
             from questionary import Choice
             from prompt_toolkit.keys import Keys
             from prompt_toolkit.key_binding import KeyBindings
+            import threading
         except ImportError:
             print("⚠️  questionary not installed. Install with: pip install questionary")
             return []
 
         current_page = 1
         per_page = 6
+        
+        # Cache for prefetched pages
+        page_cache = {}
+        prefetch_lock = threading.Lock()
+        
+        def prefetch_page(page_num):
+            """Prefetch a page in the background"""
+            if page_num in page_cache:
+                return
+            
+            try:
+                repos, has_more = self.fetch_repositories_paginated(
+                    page=page_num,
+                    per_page=per_page
+                )
+                
+                # Apply filters
+                if search or visibility or language:
+                    repos = self.filter_repositories(
+                        repos,
+                        search=search,
+                        visibility=visibility,
+                        language=language
+                    )
+                
+                with prefetch_lock:
+                    page_cache[page_num] = (repos, has_more)
+            except Exception:
+                pass  # Silently fail prefetch
         
         # Create custom key bindings for arrow navigation
         bindings = KeyBindings()
@@ -227,25 +257,36 @@ class GitHubRepoManager:
             event.app.exit(result="__navigate__")
         
         while True:
-            # Fetch current page
-            print(f"\n🔍 Loading page {current_page}...")
-            repos, has_more = self.fetch_repositories_paginated(
-                page=current_page,
-                per_page=per_page
-            )
-            
-            if not repos:
-                print("No repositories found")
-                return []
-            
-            # Apply filters
-            if search or visibility or language:
-                repos = self.filter_repositories(
-                    repos,
-                    search=search,
-                    visibility=visibility,
-                    language=language
+            # Check cache first
+            if current_page in page_cache:
+                repos, has_more = page_cache[current_page]
+            else:
+                # Fetch current page
+                print(f"\n🔍 Loading page {current_page}...")
+                repos, has_more = self.fetch_repositories_paginated(
+                    page=current_page,
+                    per_page=per_page
                 )
+                
+                # Apply filters
+                if search or visibility or language:
+                    repos = self.filter_repositories(
+                        repos,
+                        search=search,
+                        visibility=visibility,
+                        language=language
+                    )
+                
+                # Cache current page
+                page_cache[current_page] = (repos, has_more)
+            
+            # Start prefetching next page in background
+            if has_more and (current_page + 1) not in page_cache:
+                threading.Thread(
+                    target=prefetch_page,
+                    args=(current_page + 1,),
+                    daemon=True
+                ).start()
             
             if not repos:
                 if has_more:
@@ -253,7 +294,7 @@ class GitHubRepoManager:
                     current_page += 1
                     continue
                 else:
-                    print("No repositories match the filters")
+                    print("No repositories found")
                     return []
             
             # Clear screen and show header
@@ -264,7 +305,11 @@ class GitHubRepoManager:
             if current_page > 1:
                 nav_hint.append("← Prev")
             if has_more:
-                nav_hint.append("→ Next")
+                # Show if next page is prefetched
+                if (current_page + 1) in page_cache:
+                    nav_hint.append("→ Next (ready)")
+                else:
+                    nav_hint.append("→ Next (loading...)")
             nav_hint.append("Esc to cancel")
             
             print(f"\n📚 Repositories (Page {current_page}) - {' | '.join(nav_hint)}")
