@@ -700,6 +700,7 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
         "Autonomous Agent (Full Automation)",
         "Direct Fix (API - No Clone)",
         "Split Commits (Smart Chunking)",
+        "Analyze & Fix Pipelines",
         "Full Analysis + Simulation",
         "Clone and Scan Code",
         "Export Repository Info",
@@ -730,6 +731,8 @@ def _show_repo_action_menu(repos: List[Dict[str, Any]]) -> None:
                 _action_direct_fix(repo)
             elif action == "Split Commits (Smart Chunking)":
                 _action_split_commits(repo)
+            elif action == "Analyze & Fix Pipelines":
+                _action_analyze_fix_pipelines(repo)
             elif action == "Full Analysis + Simulation":
                 _action_full_analysis(repo)
             elif action == "Clone and Scan Code":
@@ -1096,6 +1099,251 @@ def _action_direct_fix(repo: Dict[str, Any]) -> None:
                 click.echo(f"   Add these to GitHub Secrets")
         else:
             click.echo(f"\n❌ Fix failed: {result.get('error', 'Unknown error')}")
+
+    except Exception as e:
+        click.echo(f"❌ Error: {str(e)}", err=True)
+        import traceback
+        traceback.print_exc()
+
+
+def _action_analyze_fix_pipelines(repo: Dict[str, Any]) -> None:
+    """Analyze existing pipelines and autonomously fix errors"""
+    from sentinelci.config import get_config
+    from sentinelci.core.pipeline_fixer import PipelineErrorDetector, PipelineFixer
+    import requests
+    import yaml
+
+    try:
+        config = get_config()
+        github_token = config.get_github_pat()
+        
+        if not github_token:
+            click.echo("❌ GitHub PAT not configured. Run: sci github setup")
+            return
+        
+        click.echo(f"\n🔍 Analyzing pipelines in: {repo['full_name']}")
+        
+        owner, repo_name = repo['full_name'].split("/")
+        
+        # Get workflows
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        
+        workflows_url = f"https://api.github.com/repos/{owner}/{repo_name}/actions/workflows"
+        response = requests.get(workflows_url, headers=headers, timeout=30)
+        
+        if response.status_code != 200:
+            click.echo(f"❌ Failed to fetch workflows: {response.status_code}")
+            return
+        
+        workflows = response.json().get("workflows", [])
+        
+        if not workflows:
+            click.echo("⚠️  No workflows found in repository")
+            return
+        
+        click.echo(f"\n📋 Found {len(workflows)} workflow(s):")
+        for wf in workflows:
+            state_icon = "✅" if wf["state"] == "active" else "⚠️"
+            click.echo(f"   {state_icon} {wf['name']} ({wf['path']})")
+        
+        # Analyze each workflow
+        detector = PipelineErrorDetector()
+        all_issues = []
+        workflow_contents = {}
+        
+        for workflow in workflows:
+            workflow_path = workflow["path"]
+            click.echo(f"\n🔍 Analyzing: {workflow_path}")
+            
+            # Get workflow content
+            content_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{workflow_path}"
+            content_response = requests.get(content_url, headers=headers, timeout=30)
+            
+            if content_response.status_code != 200:
+                click.echo(f"   ❌ Failed to fetch content")
+                continue
+            
+            import base64
+            content = base64.b64decode(content_response.json()["content"]).decode("utf-8")
+            workflow_contents[workflow_path] = content
+            
+            # Parse YAML
+            try:
+                workflow_data = yaml.safe_load(content)
+            except yaml.YAMLError as e:
+                click.echo(f"   ❌ YAML parsing error: {str(e)}")
+                all_issues.append({
+                    "workflow": workflow_path,
+                    "type": "YAML Syntax Error",
+                    "severity": "CRITICAL",
+                    "description": str(e),
+                    "fixable": False
+                })
+                continue
+            
+            # Detect issues
+            issues = detector.detect_all_issues(workflow_data, workflow_path)
+            
+            if issues:
+                click.echo(f"   ⚠️  Found {len(issues)} issue(s)")
+                for issue in issues:
+                    severity_color = {
+                        "CRITICAL": "red",
+                        "HIGH": "yellow",
+                        "MEDIUM": "blue",
+                        "LOW": "white"
+                    }.get(issue.severity, "white")
+                    
+                    click.echo(f"      • [{issue.severity}] {issue.issue_type}: {issue.description}")
+                    all_issues.append({
+                        "workflow": workflow_path,
+                        "type": issue.issue_type,
+                        "severity": issue.severity,
+                        "description": issue.description,
+                        "line": issue.line_number,
+                        "fixable": issue.auto_fixable,
+                        "fix_suggestion": issue.fix_suggestion
+                    })
+            else:
+                click.echo(f"   ✅ No issues found")
+        
+        if not all_issues:
+            click.echo("\n✅ All pipelines are healthy!")
+            return
+        
+        # Show summary
+        click.echo(f"\n📊 Summary:")
+        severity_counts = {}
+        fixable_count = 0
+        
+        for issue in all_issues:
+            sev = issue["severity"]
+            severity_counts[sev] = severity_counts.get(sev, 0) + 1
+            if issue["fixable"]:
+                fixable_count += 1
+        
+        for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+            if sev in severity_counts:
+                click.echo(f"   {sev}: {severity_counts[sev]}")
+        
+        click.echo(f"\n🔧 Auto-fixable: {fixable_count}/{len(all_issues)}")
+        
+        # Offer to fix
+        if fixable_count == 0:
+            click.echo("\n⚠️  No auto-fixable issues found")
+            click.echo("💡 Manual review required for these issues")
+            return
+        
+        if not click.confirm(f"\n🔧 Automatically fix {fixable_count} issue(s)?", default=True):
+            click.echo("❌ Cancelled")
+            return
+        
+        # Fix issues
+        click.echo("\n🔧 Applying fixes...")
+        fixer = PipelineFixer()
+        fixed_workflows = {}
+        
+        for workflow_path, content in workflow_contents.items():
+            workflow_issues = [i for i in all_issues if i["workflow"] == workflow_path and i["fixable"]]
+            
+            if not workflow_issues:
+                continue
+            
+            click.echo(f"\n   Fixing: {workflow_path}")
+            
+            try:
+                workflow_data = yaml.safe_load(content)
+                fixed_data = fixer.fix_all_issues(workflow_data, workflow_issues)
+                
+                # Convert back to YAML
+                fixed_content = yaml.dump(fixed_data, default_flow_style=False, sort_keys=False)
+                fixed_workflows[workflow_path] = fixed_content
+                
+                click.echo(f"   ✅ Fixed {len(workflow_issues)} issue(s)")
+                
+            except Exception as e:
+                click.echo(f"   ❌ Fix failed: {str(e)}")
+        
+        if not fixed_workflows:
+            click.echo("\n❌ No workflows were fixed")
+            return
+        
+        # Create branch and commit fixes
+        click.echo(f"\n📤 Creating branch and committing fixes...")
+        
+        # Get default branch
+        repo_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+        repo_response = requests.get(repo_url, headers=headers, timeout=30)
+        default_branch = repo_response.json().get("default_branch", "main")
+        
+        # Get latest commit SHA
+        ref_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/refs/heads/{default_branch}"
+        ref_response = requests.get(ref_url, headers=headers, timeout=30)
+        base_sha = ref_response.json()["object"]["sha"]
+        
+        # Create new branch
+        branch_name = f"fix/pipeline-issues-{base_sha[:7]}"
+        create_ref_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/refs"
+        create_ref_data = {
+            "ref": f"refs/heads/{branch_name}",
+            "sha": base_sha
+        }
+        
+        branch_response = requests.post(create_ref_url, headers=headers, json=create_ref_data, timeout=30)
+        
+        if branch_response.status_code not in [201, 422]:  # 422 = already exists
+            click.echo(f"❌ Failed to create branch: {branch_response.status_code}")
+            return
+        
+        click.echo(f"   ✅ Created branch: {branch_name}")
+        
+        # Commit each fixed workflow
+        for workflow_path, fixed_content in fixed_workflows.items():
+            update_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{workflow_path}"
+            
+            # Get current file SHA
+            file_response = requests.get(update_url, headers=headers, timeout=30)
+            file_sha = file_response.json()["sha"]
+            
+            # Update file
+            import base64
+            update_data = {
+                "message": f"fix: Resolve pipeline issues in {workflow_path}",
+                "content": base64.b64encode(fixed_content.encode()).decode(),
+                "sha": file_sha,
+                "branch": branch_name
+            }
+            
+            update_response = requests.put(update_url, headers=headers, json=update_data, timeout=30)
+            
+            if update_response.status_code == 200:
+                click.echo(f"   ✅ Committed: {workflow_path}")
+            else:
+                click.echo(f"   ❌ Failed to commit: {workflow_path}")
+        
+        # Create pull request
+        if click.confirm("\n📝 Create pull request?", default=True):
+            pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls"
+            pr_data = {
+                "title": f"🔧 Fix {fixable_count} pipeline issue(s)",
+                "body": f"## Pipeline Fixes\n\nAutomatically fixed {fixable_count} issue(s) in CI/CD pipelines:\n\n" + 
+                        "\n".join([f"- [{i['severity']}] {i['type']}: {i['description']}" for i in all_issues if i['fixable']]),
+                "head": branch_name,
+                "base": default_branch
+            }
+            
+            pr_response = requests.post(pr_url, headers=headers, json=pr_data, timeout=30)
+            
+            if pr_response.status_code == 201:
+                pr_url_link = pr_response.json()["html_url"]
+                click.echo(f"\n✅ Pull request created: {pr_url_link}")
+            else:
+                click.echo(f"\n❌ Failed to create PR: {pr_response.status_code}")
+        
+        click.echo(f"\n✅ Pipeline fixes complete!")
 
     except Exception as e:
         click.echo(f"❌ Error: {str(e)}", err=True)
