@@ -146,7 +146,7 @@ class GitHubRepoManager:
         multi_select: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        Interactive repository selection using questionary
+        Interactive repository selection using questionary with pagination
 
         Args:
             repos: List of repositories to choose from
@@ -166,39 +166,97 @@ class GitHubRepoManager:
             print("No repositories found")
             return []
 
-        choices = []
-        for repo in repos:
-            last_update = self._format_date(repo["last_pushed"])
-            pr_info = f" ({repo['open_prs']} PRs)" if repo['open_prs'] > 0 else ""
+        # Pagination settings
+        page_size = 6
+        total_pages = (len(repos) + page_size - 1) // page_size
+        current_page = 0
+        
+        while True:
+            # Calculate page boundaries
+            start_idx = current_page * page_size
+            end_idx = min(start_idx + page_size, len(repos))
+            page_repos = repos[start_idx:end_idx]
             
-            label = (
-                f"{repo['full_name']:<50} "
-                f"[{repo['visibility']:<7}] "
-                f"{repo['default_branch']:<15} "
-                f"Updated: {last_update:<12}"
-                f"{pr_info}"
-            )
+            # Clear screen and show header
+            import os
+            os.system('cls' if os.name == 'nt' else 'clear')
+            
+            print(f"\n📚 Repositories (Page {current_page + 1}/{total_pages})")
+            print(f"   Showing {start_idx + 1}-{end_idx} of {len(repos)} repositories\n")
+            
+            # Build choices for current page
+            choices = []
+            for repo in page_repos:
+                last_update = self._format_date(repo["last_pushed"])
+                pr_info = f" ({repo['open_prs']} PRs)" if repo['open_prs'] > 0 else ""
+                
+                label = (
+                    f"{repo['full_name']:<50} "
+                    f"[{repo['visibility']:<7}] "
+                    f"{repo['default_branch']:<15} "
+                    f"Updated: {last_update:<12}"
+                    f"{pr_info}"
+                )
 
-            choices.append(Choice(title=label, value=repo))
+                choices.append(Choice(title=label, value=repo))
+            
+            # Add navigation options
+            nav_choices = []
+            if current_page > 0:
+                nav_choices.append(Choice(title="← Previous Page", value="__prev__"))
+            if current_page < total_pages - 1:
+                nav_choices.append(Choice(title="→ Next Page", value="__next__"))
+            nav_choices.append(Choice(title="❌ Cancel", value="__cancel__"))
+            
+            all_choices = choices + [Choice(title="---", value="__separator__")] + nav_choices
 
-        try:
-            if multi_select:
-                selected = questionary.checkbox(
-                    "Select repositories (Space to select, Enter to confirm):",
-                    choices=choices,
-                ).ask()
-            else:
-                selected = questionary.select(
-                    "Select a repository:",
-                    choices=choices,
-                ).ask()
-                selected = [selected] if selected else []
+            try:
+                if multi_select:
+                    selected = questionary.checkbox(
+                        "Select repositories (Space to select, Enter to confirm):",
+                        choices=all_choices,
+                    ).ask()
+                else:
+                    selected = questionary.select(
+                        "Select a repository:",
+                        choices=all_choices,
+                    ).ask()
+                
+                # Handle navigation
+                if selected == "__prev__":
+                    current_page -= 1
+                    continue
+                elif selected == "__next__":
+                    current_page += 1
+                    continue
+                elif selected == "__cancel__" or selected is None:
+                    return []
+                elif selected == "__separator__":
+                    continue
+                
+                # Handle multi-select navigation
+                if multi_select and isinstance(selected, list):
+                    # Filter out navigation items
+                    actual_repos = [s for s in selected if isinstance(s, dict)]
+                    nav_items = [s for s in selected if isinstance(s, str)]
+                    
+                    if "__prev__" in nav_items:
+                        current_page -= 1
+                        continue
+                    elif "__next__" in nav_items:
+                        current_page += 1
+                        continue
+                    elif "__cancel__" in nav_items:
+                        return []
+                    
+                    return actual_repos if actual_repos else []
+                
+                # Single selection
+                return [selected] if selected else []
 
-            return selected if selected else []
-
-        except KeyboardInterrupt:
-            print("\n❌ Selection cancelled")
-            return []
+            except KeyboardInterrupt:
+                print("\n❌ Selection cancelled")
+                return []
 
     def _fallback_selection(
         self,
