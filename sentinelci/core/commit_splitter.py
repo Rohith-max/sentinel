@@ -43,6 +43,8 @@ class CommitSplitter:
             cwd=self.repo_path,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30
         )
         
@@ -68,6 +70,8 @@ class CommitSplitter:
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=30
             )
             
@@ -77,6 +81,8 @@ class CommitSplitter:
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=30
             )
             
@@ -281,6 +287,8 @@ class CommitSplitter:
                     ["git", "add", file_change.path],
                     cwd=self.repo_path,
                     capture_output=True,
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=30
                 )
             
@@ -292,6 +300,8 @@ class CommitSplitter:
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=30
             )
             
@@ -302,6 +312,8 @@ class CommitSplitter:
                     cwd=self.repo_path,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=30
                 )
                 commit_sha = sha_result.stdout.strip()
@@ -341,6 +353,8 @@ class CommitSplitter:
                 ["git", "reset", "HEAD"],
                 cwd=self.repo_path,
                 capture_output=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=30
             )
         

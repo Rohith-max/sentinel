@@ -1126,6 +1126,8 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                 ["git", "clone", clone_url, str(repo_path)],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=300
             )
             
@@ -1141,7 +1143,9 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                 ["git", "log", "--oneline", "-20", "--no-decorate"],
                 cwd=repo_path,
                 capture_output=True,
-                text=True
+                text=True,
+                encoding="utf-8",
+                errors="replace"
             )
             
             if log_result.returncode != 0:
@@ -1162,7 +1166,9 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                         ["git", "show", "--stat", "--format=", commit_hash],
                         cwd=repo_path,
                         capture_output=True,
-                        text=True
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace"
                     )
                     
                     # Count files changed
@@ -1212,7 +1218,9 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                 ["git", "show", "--stat", selected_commit["hash"]],
                 cwd=repo_path,
                 capture_output=True,
-                text=True
+                text=True,
+                encoding="utf-8",
+                errors="replace"
             )
             
             click.echo(f"\n� Commit Details:")
@@ -1226,7 +1234,9 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                 ["git", "reset", "--soft", f"{selected_commit['hash']}^"],
                 cwd=repo_path,
                 capture_output=True,
-                text=True
+                text=True,
+                encoding="utf-8",
+                errors="replace"
             )
             
             if reset_result.returncode != 0:
@@ -1282,7 +1292,9 @@ def _action_split_commits(repo: Dict[str, Any]) -> None:
                             ["git", "push", "--force"],
                             cwd=repo_path,
                             capture_output=True,
-                            text=True
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace"
                         )
                         
                         if push_result.returncode == 0:
