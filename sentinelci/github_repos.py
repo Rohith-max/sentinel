@@ -28,6 +28,44 @@ class GitHubRepoManager:
             "Accept": "application/vnd.github.v3+json",
         }
 
+    def fetch_repositories_paginated(self, page: int = 1, per_page: int = 6, include_orgs: bool = True) -> tuple[List[Dict[str, Any]], bool]:
+        """
+        Fetch repositories page by page for faster loading
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of repos per page
+            include_orgs: Include organization repositories
+
+        Returns:
+            Tuple of (list of repository dicts, has_more_pages)
+        """
+        self.auth.ensure_authenticated()
+
+        try:
+            response = requests.get(
+                f"{self.base_url}/user/repos",
+                headers=self._get_headers(),
+                params={
+                    "per_page": per_page,
+                    "page": page,
+                    "sort": "updated",
+                    "affiliation": "owner,collaborator,organization_member" if include_orgs else "owner",
+                },
+                timeout=15,
+            )
+
+            if response.status_code != 200:
+                raise GitHubAuthError(f"Failed to fetch repositories: {response.status_code}")
+
+            batch = response.json()
+            has_more = len(batch) == per_page
+            
+            return self._enrich_repositories(batch), has_more
+
+        except requests.exceptions.RequestException as e:
+            raise GitHubAuthError(f"Network error: {str(e)}")
+
     def fetch_all_repositories(self, include_orgs: bool = True) -> List[Dict[str, Any]]:
         """
         Fetch all repositories accessible by authenticated user
@@ -139,6 +177,148 @@ class GitHubRepoManager:
             pass
 
         return 0
+
+    def select_repositories_interactive_lazy(
+        self,
+        multi_select: bool = False,
+        search: str = None,
+        visibility: str = None,
+        language: str = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Interactive repository selection with lazy loading (fetch page by page)
+
+        Args:
+            multi_select: Allow multiple selection
+            search: Filter by name
+            visibility: Filter by visibility (public/private)
+            language: Filter by language
+
+        Returns:
+            List of selected repositories
+        """
+        try:
+            import questionary
+            from questionary import Choice
+        except ImportError:
+            print("⚠️  questionary not installed. Install with: pip install questionary")
+            return []
+
+        current_page = 1
+        per_page = 6
+        
+        while True:
+            # Fetch current page
+            print(f"\n🔍 Loading page {current_page}...")
+            repos, has_more = self.fetch_repositories_paginated(
+                page=current_page,
+                per_page=per_page
+            )
+            
+            if not repos:
+                print("No repositories found")
+                return []
+            
+            # Apply filters
+            if search or visibility or language:
+                repos = self.filter_repositories(
+                    repos,
+                    search=search,
+                    visibility=visibility,
+                    language=language
+                )
+            
+            if not repos:
+                if has_more:
+                    print("No matches on this page, loading next...")
+                    current_page += 1
+                    continue
+                else:
+                    print("No repositories match the filters")
+                    return []
+            
+            # Clear screen and show header
+            import os
+            os.system('cls' if os.name == 'nt' else 'clear')
+            
+            print(f"\n📚 Repositories (Page {current_page})")
+            print(f"   Showing {len(repos)} repositories\n")
+            
+            # Build choices for current page
+            choices = []
+            for repo in repos:
+                last_update = self._format_date(repo["last_pushed"])
+                pr_info = f" ({repo['open_prs']} PRs)" if repo['open_prs'] > 0 else ""
+                
+                label = (
+                    f"{repo['full_name']:<50} "
+                    f"[{repo['visibility']:<7}] "
+                    f"{repo['default_branch']:<15} "
+                    f"Updated: {last_update:<12}"
+                    f"{pr_info}"
+                )
+
+                choices.append(Choice(title=label, value=repo))
+            
+            # Add navigation options
+            nav_choices = []
+            if current_page > 1:
+                nav_choices.append(Choice(title="← Previous Page", value="__prev__"))
+            if has_more:
+                nav_choices.append(Choice(title="→ Next Page", value="__next__"))
+            nav_choices.append(Choice(title="❌ Cancel", value="__cancel__"))
+            
+            all_choices = choices + [Choice(title="---", value="__separator__")] + nav_choices
+
+            try:
+                if multi_select:
+                    selected = questionary.checkbox(
+                        "Select repositories (Space to select, Enter to confirm):",
+                        choices=all_choices,
+                    ).ask()
+                    
+                    if not selected:
+                        return []
+                    
+                    # Filter out navigation items
+                    actual_repos = [s for s in selected if isinstance(s, dict)]
+                    nav_items = [s for s in selected if isinstance(s, str)]
+                    
+                    if "__prev__" in nav_items:
+                        current_page -= 1
+                        continue
+                    elif "__next__" in nav_items:
+                        current_page += 1
+                        continue
+                    elif "__cancel__" in nav_items:
+                        return []
+                    
+                    # Return selected repos immediately
+                    return actual_repos if actual_repos else []
+                else:
+                    selected = questionary.select(
+                        "Select a repository:",
+                        choices=all_choices,
+                    ).ask()
+                    
+                    # Handle navigation
+                    if selected == "__prev__":
+                        current_page -= 1
+                        continue
+                    elif selected == "__next__":
+                        current_page += 1
+                        continue
+                    elif selected == "__cancel__" or selected is None:
+                        return []
+                    elif selected == "__separator__":
+                        continue
+                    
+                    # Return selected repo immediately (stop fetching)
+                    return [selected] if selected else []
+
+            except KeyboardInterrupt:
+                print("\n❌ Selection cancelled")
+                return []
 
     def select_repositories_interactive(
         self,

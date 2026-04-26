@@ -645,27 +645,13 @@ def repos(multi: bool, search: str, visibility: str, language: str) -> None:
     try:
         manager = GitHubRepoManager()
         
-        click.echo("🔍 Fetching repositories...")
-        all_repos = manager.fetch_all_repositories()
-        
-        if not all_repos:
-            click.echo("No repositories found")
-            return
-
-        filtered_repos = manager.filter_repositories(
-            all_repos,
+        # Use lazy loading for faster initial display
+        selected = manager.select_repositories_interactive_lazy(
+            multi_select=multi,
             search=search,
             visibility=visibility,
-            language=language,
+            language=language
         )
-
-        if not filtered_repos:
-            click.echo("No repositories match the filters")
-            return
-
-        click.echo(f"Found {len(filtered_repos)} repositories\n")
-
-        selected = manager.select_repositories_interactive(filtered_repos, multi_select=multi)
 
         if selected:
             click.echo(f"\n✅ Selected {len(selected)} repository(ies):")
