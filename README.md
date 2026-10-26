@@ -256,7 +256,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone repository
-git clone https://github.com/sentinelci/sentinelci.git
+git clone https://github.com/Rohith-max/sentinel.git
 cd sentinelci
 
 # Install in development mode
@@ -277,8 +277,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: https://docs.sentinelci.dev
-- **Issues**: https://github.com/sentinelci/sentinelci/issues
-- **Discussions**: https://github.com/sentinelci/sentinelci/discussions
+- **Issues**: https://github.com/Rohith-max/sentinel/issues
+- **Discussions**: https://github.com/Rohith-max/sentinel/discussions
 
 ## 🙏 Acknowledgments
 

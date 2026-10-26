@@ -799,7 +799,7 @@ def version():
     console.print("For help and documentation:")
     console.print("  • Run: [cyan]sci onboard[/cyan] for setup")
     console.print("  • Run: [cyan]sci --help[/cyan] for commands")
-    console.print("  • Visit: https://github.com/sentinelci/sentinelci")
+    console.print("  • Visit: https://github.com/Rohith-max/sentinel")
     console.print()
 
 

@@ -13,7 +13,7 @@
   "replacementPatterns": [
     {
       "pattern": "^/",
-      "replacement": "https://github.com/sentinelci/sentinelci/blob/main/"
+      "replacement": "https://github.com/Rohith-max/sentinel/blob/main/"
     }
   ],
   "httpHeaders": [

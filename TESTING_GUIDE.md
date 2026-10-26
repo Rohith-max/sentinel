@@ -441,6 +441,6 @@ sci scan
 
 - **Documentation**: Check `AUTONOMOUS_AGENT_GUIDE.md`
 - **Examples**: See `examples/github_integration_demo.py`
-- **Issues**: https://github.com/sentinelci/sentinelci/issues
+- **Issues**: https://github.com/Rohith-max/sentinel/issues
 
 Happy testing! 🔒

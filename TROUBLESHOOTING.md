@@ -220,7 +220,7 @@ If you're still experiencing issues:
    ```
 
 3. **Report issue:**
-   - GitHub Issues: https://github.com/sentinelci/sentinelci/issues
+   - GitHub Issues: https://github.com/Rohith-max/sentinel/issues
    - Include: OS, Python version, error message, and steps to reproduce
 
 ## Quick Verification

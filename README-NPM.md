@@ -273,7 +273,7 @@ npm install -g sentinelci
 
 This NPM package is a wrapper around the main Python project:
 
-- **Main Project**: https://github.com/sentinelci/sentinelci
+- **Main Project**: https://github.com/Rohith-max/sentinel
 - **NPM Issues**: Report NPM-specific issues here
 - **Python Issues**: Report core functionality issues in main repo
 
@@ -284,7 +284,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🆘 Support
 
 - **Documentation**: https://docs.sentinelci.dev
-- **Issues**: https://github.com/sentinelci/sentinelci/issues
+- **Issues**: https://github.com/Rohith-max/sentinel/issues
 - **NPM Package**: https://www.npmjs.com/package/sentinelci
 
 ---

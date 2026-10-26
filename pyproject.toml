@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sentinelci"
-version = "1.0.10"
+version = "1.0.11"
 description = "AI-powered security scanning and autonomous remediation platform"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -89,11 +89,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sentinelci/sentinelci"
+Homepage = "https://github.com/Rohith-max/sentinel"
 Documentation = "https://docs.sentinelci.dev"
-Repository = "https://github.com/sentinelci/sentinelci"
-Issues = "https://github.com/sentinelci/sentinelci/issues"
-Changelog = "https://github.com/sentinelci/sentinelci/releases"
+Repository = "https://github.com/Rohith-max/sentinel"
+Issues = "https://github.com/Rohith-max/sentinel/issues"
+Changelog = "https://github.com/Rohith-max/sentinel/releases"
 
 [project.scripts]
 sci = "sentinelci.cli:main"

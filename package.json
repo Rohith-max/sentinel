@@ -1,6 +1,6 @@
 {
   "name": "sentinelci",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "AI-Powered Security Scanning and Autonomous Remediation Platform",
   "main": "index.js",
   "bin": {
@@ -27,13 +27,13 @@
   ],
   "author": "SentinelCI Team <team@sentinelci.dev>",
   "license": "MIT",
-  "homepage": "https://github.com/sentinelci/sentinelci",
+  "homepage": "https://github.com/Rohith-max/sentinel",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sentinelci/sentinelci.git"
+    "url": "git+https://github.com/Rohith-max/sentinel.git"
   },
   "bugs": {
-    "url": "https://github.com/sentinelci/sentinelci/issues"
+    "url": "https://github.com/Rohith-max/sentinel/issues"
   },
   "engines": {
     "node": ">=16.0.0"
