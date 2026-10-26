@@ -283,7 +283,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-- **Documentation**: https://docs.sentinelci.dev
+- **Documentation**: https://github.com/Rohith-max/sentinel#readme
 - **Issues**: https://github.com/Rohith-max/sentinel/issues
 - **NPM Package**: https://www.npmjs.com/package/sentinelci
 

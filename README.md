@@ -276,7 +276,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: https://docs.sentinelci.dev
+- **Documentation**: https://github.com/Rohith-max/sentinel#readme
 - **Issues**: https://github.com/Rohith-max/sentinel/issues
 - **Discussions**: https://github.com/Rohith-max/sentinel/discussions
 
