@@ -132,7 +132,7 @@ jobs:
           ### Links
           - 🐍 [PyPI Package](https://pypi.org/project/sentinelci/)
           - 📦 [NPM Package](https://www.npmjs.com/package/sentinelci)
-          - 📚 [Documentation](https://github.com/sentinelci/sentinelci#readme)
+          - 📚 [Documentation](https://github.com/Rohith-max/sentinelci#readme)
           
         draft: false
         prerelease: false

@@ -1,6 +1,6 @@
 {
   "name": "sentinelci",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "AI-Powered Security Scanning and Autonomous Remediation Platform",
   "main": "index.js",
   "bin": {
